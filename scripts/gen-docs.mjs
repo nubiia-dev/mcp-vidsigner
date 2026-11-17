@@ -329,7 +329,7 @@ ${detail('mgmt')}
 
 ## Alternative spellings (OpenAPI versus manual)
 
-The tools accept both spellings, normalize them to the canonical one and, where there is a real doubt, send both. The decision lives in \`src/tools/aliases.ts\`; **pending verification in pre-production with a ClientID**.
+The tools accept both spellings, normalize them to the canonical one and, where there is a real doubt, send both. The decision lives in \`src/tools/aliases.ts\`. Only the signer \`Email\` / \`eMail\` of \`POST /documents\` is **verified** (pre-production, 17/11/2026: the server is case-insensitive and, if the two values differ, the last key wins, which is why different values are rejected); the rest is **pending verification in pre-production** (writes require a JWT).
 
 | Schema | Field | Sent | Status |
 |---|---|---|---|

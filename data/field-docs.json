@@ -296,7 +296,7 @@
     "*.Frequency": { "description": "Hours between reminders (1-99).", "min": 1, "max": 99 },
     "*.MaxRetries": { "description": "Maximum number of reminders (1-10).", "min": 1, "max": 10 },
     "*.NotificationEmailMessage": {
-      "description": "Custom subject and body of the notification email to the signer (required for remote signatures)."
+      "description": "Custom subject and body of the notification email to the signer. Required for emailandsms signers unless SkipSignatureEmail=true; must be omitted/null when SkipSignatureEmail=true (API errors 12541/12544, verified in pre-production)."
     },
     "SignatureNotificationEmailDTO.eMailSubject": {
       "description": "Subject of the email (max 255).",

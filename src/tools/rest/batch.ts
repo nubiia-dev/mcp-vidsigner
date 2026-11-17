@@ -19,6 +19,7 @@ const createBatch = defineTool({
     'Creates a batch of documents with the same signers and workflow. It is the first step of create batch, add documents, close batch.',
   notes: [
     'Requires JWT.',
+    'NotificationEmailMessage: required for emailandsms signers unless SkipSignatureEmail=true, and must be omitted/null when SkipSignatureEmail=true (API errors 12541/12544). Verified for POST /documents only; assumed, not verified, for the batch endpoints.',
     'The emails are sent when the batch is closed (vidsigner_close_batch), not when it is created.',
     'Body fields are the VIDsigner API ones (PascalCase).',
   ],
@@ -43,6 +44,7 @@ const createBatch = defineTool({
     'With remote signing the signer gets ONE email and ONE OTP for the whole batch.',
     'Flow: create_batch -> add_document_to_batch (once per document) -> close_batch. The emails are sent when the batch is closed.',
     'Requires JWT. Field names are those of the VIDsigner API.',
+    'Rule for NotificationEmailMessage on emailandsms signers: required unless SkipSignatureEmail=true, and must be omitted/null when SkipSignatureEmail=true (API errors 12541/12544; verified in pre-production for POST /documents, not yet for the batch endpoints).',
   ].join(' '),
   inputSchema: sendBatchShape,
   handler: async (args, { rest, policy }) => {
@@ -67,6 +69,7 @@ const addDocumentToBatch = defineTool({
     'Adds a PDF to an open batch, indicating where each signer signs. Nothing is sent to the signers until the batch is closed.',
   notes: [
     'SignaturesGroups[].Signatures[] follows the same order as the signers of the batch.',
+    'The NotificationEmailMessage / SkipSignatureEmail rule (12541/12544) applies to the signers of the batch (see vidsigner_create_batch); verified for POST /documents only.',
     'Accepts filePath or contentBase64.',
   ],
   example: {
@@ -77,7 +80,7 @@ const addDocumentToBatch = defineTool({
     ],
   },
   description:
-    'Adds a PDF to an open batch (POST /documentbatch/{batchGuid}/document). Each entry in SignaturesGroups[].Signatures[] places the signature box of the matching signer of the batch. Accepts a local path or base64. Nothing is sent to the signers until the batch is closed.',
+    'Adds a PDF to an open batch (POST /documentbatch/{batchGuid}/document). Each entry in SignaturesGroups[].Signatures[] places the signature box of the matching signer of the batch. Accepts a local path or base64. Nothing is sent to the signers until the batch is closed. If an emailandsms signer has SkipSignatureEmail=false, NotificationEmailMessage must be set; with SkipSignatureEmail=true it must be omitted (errors 12541/12544, verified in pre-production for POST /documents only).',
   inputSchema: {
     batchGuid,
     ...fileInputShape,

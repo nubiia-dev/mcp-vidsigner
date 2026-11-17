@@ -141,8 +141,9 @@ How many tools the server registers in each configuration (computed with the rea
   - Requires JWT (VIDSIGNER_CLIENT_ID and VIDSIGNER_CLIENT_SECRET); with Basic credentials it answers 401 "Token not found".
   - Depending on SignatureType and SkipSignatureEmail it sends real emails and SMS to the signers: in pre-production use test signers only.
   - For a signing link without email: SkipSignatureEmail=true on the signer (the subscription needs AllowSkipEmail, otherwise 409/40111) and then vidsigner_get_signature_url.
+  - NotificationEmailMessage is required for every emailandsms signer unless SkipSignatureEmail=true, and must be omitted (null) when SkipSignatureEmail=true. Otherwise the API answers 400/12541 ("NotificationEmailMessage cannot be null for Signer") or 400/12544 ("NotificationEmailMessage must be null if SkipSignatureEmail is true"). Verified in pre-production on 17/11/2026; the client does not enforce it.
   - The signer email accepts null, empty or "null"; all other emails (recipients, notifications) are mandatory and validated.
-  - The alternative spellings in the manual (eMail/Email, APP/App...) are accepted; the doubtful ones are still pending verification with a ClientID.
+  - The signer Email/eMail spellings are both accepted (verified in pre-production: if the values differ, the last key wins, so the tool rejects different values). The other alternative spellings (APP/App, CertificateGUI/CertificateGUID...) are still pending verification.
   - Accepts the PDF via filePath (inside VIDSIGNER_ALLOWED_INPUT_DIRS) or contentBase64; exactly one.
 - **Example:** `{"filePath":"/Users/me/vidsigner-mcp/in/contract.pdf","IssuerName":"Acme","SignersGroups":[{"Signers":[{"SignatureType":"emailandsms","SignerName":"Jane Doe","Email":"jane@example.test","PhoneNumber":"+34600111222","Language":"es","NotificationEmailMessage":{"eMailSubject":"Contract to sign","eMailBody":"<p>Hello Jane, please sign the contract.</p>"}}]}]}`
 
@@ -157,7 +158,7 @@ How many tools the server registers in each configuration (computed with the rea
   - `outputFileName` (string, optional): Optional base file name for the downloaded file.
 - **Notes and restrictions:**
   - Returns the file path, never the base64 content.
-  - It is the safe way to read a signed PDF on a subscription shared with another system.
+  - It does not change the Downloaded flag (the call is recorded in the document log), so it is the safe way to read a signed PDF on a subscription shared with another system.
 - **Example:** `{"docGuid":"0b6f1d0e-1c2a-4c55-9d8e-3a1f5b7c9e21"}`
 
 #### `vidsigner_delete_document`
@@ -183,6 +184,8 @@ How many tools the server registers in each configuration (computed with the rea
   - `docGuid` (string, required): Document GUID (DocGUI), as returned when the document was created.
 - **Notes and restrictions:**
   - Only in the OpenAPI, not in the manual.
+  - It records ALL the API calls on the document, reads included, with the IP of the client that made them (verified in pre-production).
+  - Whoever can see this log sees the IPs of the machines that run this MCP.
 
 #### `vidsigner_expire_document`
 
@@ -288,7 +291,7 @@ How many tools the server registers in each configuration (computed with the rea
 - **Notes and restrictions:**
   - Side effect: if another system shares the subscription and consumes that queue, in production it will no longer see the document.
   - An unsigned document answers 409/50008.
-  - Alternative without side effects: vidsigner_get_document.
+  - Alternative that does not change the Downloaded flag (the call is recorded in the document log): vidsigner_get_document.
 - **Example:** `{"docGuid":"0b6f1d0e-1c2a-4c55-9d8e-3a1f5b7c9e21"}`
 
 #### `vidsigner_delete_signed_document`
@@ -316,9 +319,11 @@ How many tools the server registers in each configuration (computed with the rea
   - `signerGuid` (string, required): Signer GUID (SignerGUID/SignerGUI) of one signature of a document.
   - `returnUrl` (string, optional): URL to redirect the signer to when finished or rejected.
 - **Notes and restrictions:**
-  - Only works if the signer was created with SkipSignatureEmail=true; otherwise 409/16601.
-  - The subscription needs the AllowSkipEmail permission (otherwise 409/40111).
-  - The link is a bearer credential: anyone who opens it can sign. Hand it only to the signer.
+  - Only works if the signer was created with SkipSignatureEmail=true (otherwise 409/16601) and the subscription has the AllowSkipEmail permission (otherwise 409/40111).
+  - Every call records the evidence SIGNATUREURL_RETRIEVED in the report of the document (not documented by the vendor): do not call it exploratively or repeatedly.
+  - The URL is stable per signer (it is the same one the resend email carries) and it cannot be rotated: it is only invalidated by expiring or deleting the document.
+  - With emailandsms the signer must also pass the OTP: the link is the first factor, not the only one, unless the signer was created with AllowEmptyPhoneNumber.
+  - The link is a bearer credential: anyone who opens it can start the signing. Hand it only to the signer.
   - returnUrl is validated against the notification destination policy.
 - **Example:** `{"signerGuid":"5c1e8a42-7d3b-4f10-8b6a-2e9d0c4a7f13"}`
 
@@ -335,7 +340,7 @@ How many tools the server registers in each configuration (computed with the rea
   - `EmailNotification` (object, optional): Custom email subject/body.
 - **Notes and restrictions:**
   - Sends a real message to the signer.
-  - Only for pending remote signatures.
+  - Only for pending remote signatures. It also works on documents created with SkipSignatureEmail=true (verified in pre-production: 200 without body, evidence EMAIL_RESENT).
   - It is not retried automatically.
   - The destination and texts go through the recipient policy.
 - **Example:** `{"signerGuid":"5c1e8a42-7d3b-4f10-8b6a-2e9d0c4a7f13","Channel":"email","Destination":"jane@example.test"}`
@@ -423,6 +428,7 @@ How many tools the server registers in each configuration (computed with the rea
   - `NotificationConfig` (object, optional): Which webhook notifications are sent to NotificationURL and how they are authenticated.
 - **Notes and restrictions:**
   - Requires JWT.
+  - NotificationEmailMessage: required for emailandsms signers unless SkipSignatureEmail=true, and must be omitted/null when SkipSignatureEmail=true (API errors 12541/12544). Verified for POST /documents only; assumed, not verified, for the batch endpoints.
   - The emails are sent when the batch is closed (vidsigner_close_batch), not when it is created.
   - Body fields are the VIDsigner API ones (PascalCase).
 - **Example:** `{"IssuerName":"Acme","SignersGroups":[{"Signers":[{"SignatureType":"emailandsms","SignerName":"Jane Doe","Email":"ana@example.test","PhoneNumber":"+34600111222","Language":"es"}]}]}`
@@ -449,6 +455,7 @@ How many tools the server registers in each configuration (computed with the rea
   - … and 2 more (see the tool schema).
 - **Notes and restrictions:**
   - SignaturesGroups[].Signatures[] follows the same order as the signers of the batch.
+  - The NotificationEmailMessage / SkipSignatureEmail rule (12541/12544) applies to the signers of the batch (see vidsigner_create_batch); verified for POST /documents only.
   - Accepts filePath or contentBase64.
 - **Example:** `{"batchGuid":"0b6f1d0e-1c2a-4c55-9d8e-3a1f5b7c9e21","filePath":"/Users/me/vidsigner-mcp/in/contract.pdf","SignaturesGroups":[{"Signatures":[{"Visible":{"Page":1,"PosX":100,"PosY":200,"SizeX":60,"SizeY":20}}]}]}`
 
@@ -1293,19 +1300,19 @@ How many tools the server registers in each configuration (computed with the rea
 
 ## Alternative spellings (OpenAPI versus manual)
 
-The tools accept both spellings, normalize them to the canonical one and, where there is a real doubt, send both. The decision lives in `src/tools/aliases.ts`; **pending verification in pre-production with a ClientID**.
+The tools accept both spellings, normalize them to the canonical one and, where there is a real doubt, send both. The decision lives in `src/tools/aliases.ts`. Only the signer `Email` / `eMail` of `POST /documents` is **verified** (pre-production, 17/11/2026: the server is case-insensitive and, if the two values differ, the last key wins, which is why different values are rejected); the rest is **pending verification in pre-production** (writes require a JWT).
 
-| Schema                      | Field                                 | Sent           | Status  |
-| --------------------------- | ------------------------------------- | -------------- | ------- |
-| `Signer.SignerV2DTO`        | `Email` / `eMail`                     | both           | pending |
-| `Signer.SignerV2DTO`        | `OTPChannel`: `whatsapp` / `WhatsApp` | canonical only | pending |
-| `Signer.BatchSignerDTO`     | `Email` / `eMail`                     | both           | pending |
-| `Signer.BatchSignerDTO`     | `OTPChannel`: `whatsapp` / `WhatsApp` | canonical only | pending |
-| `DocumentRecipientDTO`      | `Email` / `eMail`                     | both           | pending |
-| `DocAppearanceDTO`          | `App` / `APP`                         | both           | pending |
-| `CentralizedCertificateDTO` | `CertificateGUID` / `CertificateGUI`  | both           | pending |
-| `RejectionOptionDTO`        | `Id` / `id`                           | canonical only | pending |
-| `RejectionOptionDTO`        | `Text` / `text`                       | canonical only | pending |
+| Schema                      | Field                                 | Sent           | Status   |
+| --------------------------- | ------------------------------------- | -------------- | -------- |
+| `Signer.SignerV2DTO`        | `Email` / `eMail`                     | canonical only | verified |
+| `Signer.SignerV2DTO`        | `OTPChannel`: `whatsapp` / `WhatsApp` | canonical only | pending  |
+| `Signer.BatchSignerDTO`     | `Email` / `eMail`                     | both           | pending  |
+| `Signer.BatchSignerDTO`     | `OTPChannel`: `whatsapp` / `WhatsApp` | canonical only | pending  |
+| `DocumentRecipientDTO`      | `Email` / `eMail`                     | both           | pending  |
+| `DocAppearanceDTO`          | `App` / `APP`                         | both           | pending  |
+| `CentralizedCertificateDTO` | `CertificateGUID` / `CertificateGUI`  | both           | pending  |
+| `RejectionOptionDTO`        | `Id` / `id`                           | canonical only | pending  |
+| `RejectionOptionDTO`        | `Text` / `text`                       | canonical only | pending  |
 
 ## Operations without a tool (client method only, or none)
 

@@ -17,17 +17,22 @@ const getSignatureUrl = defineTool({
   docSummary:
     'Returns the VIDremote signing link of a signer, to hand over through your own channel.',
   notes: [
-    'Only works if the signer was created with SkipSignatureEmail=true; otherwise 409/16601.',
-    'The subscription needs the AllowSkipEmail permission (otherwise 409/40111).',
-    'The link is a bearer credential: anyone who opens it can sign. Hand it only to the signer.',
+    'Only works if the signer was created with SkipSignatureEmail=true (otherwise 409/16601) and the subscription has the AllowSkipEmail permission (otherwise 409/40111).',
+    'Every call records the evidence SIGNATUREURL_RETRIEVED in the report of the document (not documented by the vendor): do not call it exploratively or repeatedly.',
+    'The URL is stable per signer (it is the same one the resend email carries) and it cannot be rotated: it is only invalidated by expiring or deleting the document.',
+    'With emailandsms the signer must also pass the OTP: the link is the first factor, not the only one, unless the signer was created with AllowEmptyPhoneNumber.',
+    'The link is a bearer credential: anyone who opens it can start the signing. Hand it only to the signer.',
     'returnUrl is validated against the notification destination policy.',
   ],
   example: { signerGuid: '5c1e8a42-7d3b-4f10-8b6a-2e9d0c4a7f13' },
   description: [
     'Returns the VIDremote signing link of a signer (GET /signature/{SignerGUID}/vidremoteurl).',
     'Only works if the signer was created with SkipSignatureEmail=true; otherwise 409/16601. The subscription also needs AllowSkipEmail (otherwise 409/40111).',
+    'Each call leaves the evidence SIGNATUREURL_RETRIEVED in the report of the document (undocumented by the vendor), so never call it exploratively or repeatedly.',
+    'The URL is stable per signer (the same one as in the resend email) and cannot be rotated; only expiring or deleting the document invalidates it.',
+    'With emailandsms the signer must also pass the OTP, so the link is the first factor, not the only one (except with AllowEmptyPhoneNumber).',
     'Optionally appends url_return (Base64) so the signer is redirected there afterwards.',
-    'The link is a bearer credential: anyone who opens it can sign. Never open it from here; hand it only to the intended signer.',
+    'The link is a bearer credential: anyone who opens it can start the signing. Never open it from here; hand it only to the intended signer.',
   ].join(' '),
   inputSchema: {
     signerGuid,
@@ -60,7 +65,7 @@ const sendSignatureUrl = defineTool({
   docSummary: 'Resends the VIDremote signing link to the signer by email or SMS.',
   notes: [
     'Sends a real message to the signer.',
-    'Only for pending remote signatures.',
+    'Only for pending remote signatures. It also works on documents created with SkipSignatureEmail=true (verified in pre-production: 200 without body, evidence EMAIL_RESENT).',
     'It is not retried automatically.',
     'The destination and texts go through the recipient policy.',
   ],
@@ -70,7 +75,7 @@ const sendSignatureUrl = defineTool({
     Destination: 'jane@example.test',
   },
   description:
-    'Resends the signing link (VIDremote) to the signer by email or SMS (PUT /signature/{SignerGUID}/vidremoteurl). SENDS A REAL MESSAGE to the signer. Only for remote signatures that are still unsigned.',
+    'Resends the signing link (VIDremote) to the signer by email or SMS (PUT /signature/{SignerGUID}/vidremoteurl). SENDS A REAL MESSAGE to the signer. Only for remote signatures that are still unsigned; it also works on documents created with SkipSignatureEmail=true.',
   inputSchema: {
     signerGuid,
     Channel: z.enum(['email', 'sms']).describe('Delivery channel.'),

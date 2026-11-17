@@ -367,7 +367,7 @@ const S_Signer_SignerV2DTO = obj('Signer.SignerV2DTO', {
     'Reminders by email for remote signers (SignatureType=emailandsms). They stop when the document is signed, rejected or deleted.',
   ),
   NotificationEmailMessage: S_SignatureNotificationEmailDTO.optional().describe(
-    'Custom subject and body of the notification email to the signer (required for remote signatures).',
+    'Custom subject and body of the notification email to the signer. Required for emailandsms signers unless SkipSignatureEmail=true; must be omitted/null when SkipSignatureEmail=true (API errors 12541/12544, verified in pre-production).',
   ),
   StampCertificate: S_StampCertificateDTO.optional().describe(
     'Stamp certificate to use (SignatureType=stamp).',
@@ -467,7 +467,7 @@ const S_Signer_SignerV2DTO = obj('Signer.SignerV2DTO', {
     .string()
     .optional()
     .describe(
-      'Alias of `Email` (spelling used by the manual). Accepted and normalised to `Email`; both spellings are sent to VIDsigner until the right one is verified in pre-production. Do not send both with different values.',
+      'Alias of `Email` (spelling used by the manual). Accepted and normalised to `Email`. Do not send both with different values.',
     ),
 });
 
@@ -618,7 +618,7 @@ const S_Signer_BatchSignerDTO = obj('Signer.BatchSignerDTO', {
     'Reminders by email for remote signers (SignatureType=emailandsms). They stop when the document is signed, rejected or deleted.',
   ),
   NotificationEmailMessage: S_SignatureNotificationEmailDTO.optional().describe(
-    'Custom subject and body of the notification email to the signer (required for remote signatures).',
+    'Custom subject and body of the notification email to the signer. Required for emailandsms signers unless SkipSignatureEmail=true; must be omitted/null when SkipSignatureEmail=true (API errors 12541/12544, verified in pre-production).',
   ),
   StampCertificate: S_StampCertificateDTO.optional().describe(
     'Stamp certificate to use (SignatureType=stamp).',

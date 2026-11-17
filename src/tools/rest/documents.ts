@@ -27,8 +27,9 @@ const createDocument = defineTool({
     'Requires JWT (VIDSIGNER_CLIENT_ID and VIDSIGNER_CLIENT_SECRET); with Basic credentials it answers 401 "Token not found".',
     'Depending on SignatureType and SkipSignatureEmail it sends real emails and SMS to the signers: in pre-production use test signers only.',
     'For a signing link without email: SkipSignatureEmail=true on the signer (the subscription needs AllowSkipEmail, otherwise 409/40111) and then vidsigner_get_signature_url.',
+    'NotificationEmailMessage is required for every emailandsms signer unless SkipSignatureEmail=true, and must be omitted (null) when SkipSignatureEmail=true. Otherwise the API answers 400/12541 ("NotificationEmailMessage cannot be null for Signer") or 400/12544 ("NotificationEmailMessage must be null if SkipSignatureEmail is true"). Verified in pre-production on 17/11/2026; the client does not enforce it.',
     'The signer email accepts null, empty or "null"; all other emails (recipients, notifications) are mandatory and validated.',
-    'The alternative spellings in the manual (eMail/Email, APP/App...) are accepted; the doubtful ones are still pending verification with a ClientID.',
+    'The signer Email/eMail spellings are both accepted (verified in pre-production: if the values differ, the last key wins, so the tool rejects different values). The other alternative spellings (APP/App, CertificateGUI/CertificateGUID...) are still pending verification.',
     'Accepts the PDF via filePath (inside VIDSIGNER_ALLOWED_INPUT_DIRS) or contentBase64; exactly one.',
   ],
   example: {
@@ -58,6 +59,7 @@ const createDocument = defineTool({
     'Requires a JWT (VIDSIGNER_CLIENT_ID/SECRET); with Basic credentials VIDsigner answers 401 "Token not found".',
     'Provide the PDF as a local path (filePath, preferred) or base64 (contentBase64).',
     'For a signing link without email use SkipSignatureEmail=true on the signer (needs AllowSkipEmail on the subscription), then call vidsigner_get_signature_url.',
+    'NotificationEmailMessage is required for emailandsms signers unless SkipSignatureEmail=true, and must be omitted/null when SkipSignatureEmail=true (API errors 12541/12544, verified in pre-production).',
     'Field names of the body are exactly those of the VIDsigner API (PascalCase). Returns the DocGUI; use vidsigner_get_document_info to get the SignerGUIDs.',
   ].join(' '),
   inputSchema: {
@@ -90,18 +92,18 @@ const getDocument = defineTool({
   risk: 'read',
   endpoint: 'GET /documents/{id}',
   whenToUse:
-    'you need the PDF of a document in any status (unsigned, signed or rejected), including a signed one, without side effects.',
+    'you need the PDF of a document in any status (unsigned, signed or rejected), including a signed one, without changing its Downloaded flag.',
   docSummary:
     'Downloads the PDF of a document in any status and saves it to disk. Unlike vidsigner_download_signed_document, it does not mark the document as downloaded.',
   notes: [
     'Returns the file path, never the base64 content.',
-    'It is the safe way to read a signed PDF on a subscription shared with another system.',
+    'It does not change the Downloaded flag (the call is recorded in the document log), so it is the safe way to read a signed PDF on a subscription shared with another system.',
   ],
   example: { docGuid: '0b6f1d0e-1c2a-4c55-9d8e-3a1f5b7c9e21' },
   description: [
     'Downloads the PDF of a document in ANY status (unsigned, signed or rejected) and saves it to disk (GET /documents/{id}).',
     'Returns the saved path, never the base64 content.',
-    'Per the manual (14.18) this does NOT mark the document as downloaded, unlike vidsigner_download_signed_document, so it is the safe way to read a signed PDF on a shared subscription.',
+    'Per the manual (14.18) this does NOT mark the document as downloaded, unlike vidsigner_download_signed_document: it does not change the Downloaded flag, so it is the safe way to read a signed PDF on a shared subscription. The call is still recorded in the document log ("Downloaded document. Current Status = ..."), which is visible with vidsigner_get_document_log.',
   ].join(' '),
   inputSchema: { docGuid, outputFileName },
   handler: async ({ docGuid, outputFileName }, { rest, files }) => {
@@ -156,9 +158,13 @@ const getDocumentLog = defineTool({
     'you need the audit trail of operations on a document (who did what, from which IP and when).',
   docSummary:
     'Returns the trace of operations on a document: operation, result, message, IP and date.',
-  notes: ['Only in the OpenAPI, not in the manual.'],
+  notes: [
+    'Only in the OpenAPI, not in the manual.',
+    'It records ALL the API calls on the document, reads included, with the IP of the client that made them (verified in pre-production).',
+    'Whoever can see this log sees the IPs of the machines that run this MCP.',
+  ],
   description:
-    'Returns the trace of operations performed on a document (operation, result, message, IP, timestamp) (GET /documents/{id}/loginfo). Only in the OpenAPI, not in the manual.',
+    'Returns the trace of operations performed on a document (operation, result, message, IP, timestamp) (GET /documents/{id}/loginfo). It records all the API calls on the document, reads included, with the IP of the client that made them: whoever can see this log sees the IPs of the machines that run this MCP. Only in the OpenAPI, not in the manual.',
   inputSchema: { docGuid },
   handler: async ({ docGuid }, { rest }) => ({ trace: await rest.getDocumentLog(docGuid) }),
 });

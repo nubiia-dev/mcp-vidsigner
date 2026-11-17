@@ -182,3 +182,48 @@ describe('documentation of the 81 tools', () => {
     expect(undocumentedProps(schema).missing.sort()).toEqual(['b.c', 'b.d', 'e[].f', 'g.h']);
   });
 });
+
+describe('verified rules of the API in the descriptions (pre-production, 17/11/2026)', () => {
+  const desc = (name: string) => listed.find((t) => t.name === name)?.description ?? '';
+  const notes = (name: string) => (ALL_TOOLS.find((t) => t.name === name)?.notes ?? []).join(' ');
+
+  it('create_document, create_batch and add_document_to_batch state the 12541/12544 rule', () => {
+    for (const name of [
+      'vidsigner_create_document',
+      'vidsigner_create_batch',
+      'vidsigner_add_document_to_batch',
+    ]) {
+      expect(desc(name), name).toMatch(/12541\/12544/);
+      expect(notes(name), name).toMatch(/12541/);
+      expect(notes(name), name).toMatch(/12544/);
+    }
+    expect(desc('vidsigner_create_batch')).toMatch(
+      /verified in pre-production for POST \/documents/,
+    );
+  });
+
+  it('NotificationEmailMessage documents the rule in the schema of the three tools', () => {
+    for (const name of ['vidsigner_create_document', 'vidsigner_create_batch']) {
+      const json = JSON.stringify(listed.find((t) => t.name === name)?.inputSchema);
+      expect(json, name).toMatch(/must be omitted\/null when SkipSignatureEmail=true/);
+      expect(json, name).not.toMatch(/notification email to the signer \(required/);
+    }
+  });
+
+  it('get_signature_url warns about the evidence, the stable URL, the OTP and its prerequisites', () => {
+    const d = desc('vidsigner_get_signature_url');
+    expect(d).toMatch(/SIGNATUREURL_RETRIEVED/);
+    expect(d).toMatch(/stable per signer/);
+    expect(d).toMatch(/OTP/);
+    expect(d).toMatch(/16601/);
+    expect(d).toMatch(/40111/);
+    expect(notes('vidsigner_get_signature_url')).toMatch(/AllowEmptyPhoneNumber/);
+  });
+
+  it('no tool claims to be free of side effects: reads are recorded in the document log', () => {
+    for (const t of listed) expect(t.description, t.name).not.toMatch(/without side effects/i);
+    expect(desc('vidsigner_get_document')).toMatch(/does not change the Downloaded flag/);
+    expect(desc('vidsigner_get_document_log')).toMatch(/IP of the client/);
+    expect(desc('vidsigner_send_signature_url')).toMatch(/SkipSignatureEmail=true/);
+  });
+});

@@ -38,13 +38,13 @@ const downloadSignedDocument = defineTool({
   notes: [
     'Side effect: if another system shares the subscription and consumes that queue, in production it will no longer see the document.',
     'An unsigned document answers 409/50008.',
-    'Alternative without side effects: vidsigner_get_document.',
+    'Alternative that does not change the Downloaded flag (the call is recorded in the document log): vidsigner_get_document.',
   ],
   example: { docGuid: '0b6f1d0e-1c2a-4c55-9d8e-3a1f5b7c9e21' },
   description: [
     'WARNING: this call MARKS THE DOCUMENT AS DOWNLOADED in VIDsigner (manual 14.7/14.8) and removes it from the "signed, not downloaded" queue.',
     'If another system (for example your ERP) shares the subscription and consumes that queue, running this against production makes it miss the document.',
-    'Prefer vidsigner_get_document, which reads any document without that side effect.',
+    'Prefer vidsigner_get_document, which reads any document without changing the Downloaded flag (the call is recorded in the document log).',
     'Downloads the signed PDF and saves it to disk (GET /signeddocuments/{id}); returns the path, never the base64. An unsigned document answers 409/50008.',
   ].join(' '),
   inputSchema: { docGuid, outputFileName },
