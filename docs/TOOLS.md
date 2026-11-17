@@ -421,7 +421,7 @@ How many tools the server registers in each configuration (computed with the rea
 - **Operation:** `GET /vidmobileuser/signaturerequest/{id}`
 - **Risk:** read
 - **Flags:** none (default in pre: yes; in pro: yes)
-- **Description:** Returns the CMS container of a VIDmobile signature request and saves it to disk.
+- **Description:** Not usable with subscription tokens (always 401 with the credentials of this MCP). Returns the CMS container of a VIDmobile signature request and saves it to disk.
 - **Main parameters:**
   - `requestId` (string, required): Signature request id.
 - **Notes and restrictions:**
@@ -1029,7 +1029,7 @@ How many tools the server registers in each configuration (computed with the rea
   - `username` (string, required): Display name of the user.
   - `legalid` (string, required): Legal id (NIF/NIE) of the user; unique in the subscription.
   - `email` (string, required): Email of the user (VIDSIGNER_ALLOWED_EMAIL_DOMAINS restricts it).
-  - `password` (string, required): Password of the user, 4-100 characters (a secret).
+  - `password` (string, required): Password of the user (a secret), 8-100 characters with an uppercase letter, a number and one of @ # $ (!
   - `skipEnrollEmail` (boolean, required): true to NOT send the enrollment email.
   - `PhoneNumber` (string, optional): E.164.
   - `Language` (`ca` \| `de` \| `en` \| `es`, optional): Language of the enrollment email.

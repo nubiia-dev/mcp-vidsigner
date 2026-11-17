@@ -6,8 +6,10 @@ import type { SecurityConfig } from '../config.js';
  * - `read`: read-only (GET and the searches `POST /search`, `POST /edeliveries/search`).
  * - `write`: creates or modifies data, or triggers real notifications (emails/SMS) to the signer.
  * - `destructive`: deletes or invalidates (any kind of DELETE, `PUT .../expire`).
- * - `mark_downloaded`: a GET with a side effect: `GET /signeddocuments/{id}` marks the document
- *   as downloaded and removes it from the "signed but not downloaded" queue.
+ * - `mark_downloaded`: a GET with a side effect: `GET /signeddocuments/{id}` (manual 14.7) and
+ *   `GET /documents/{id}` on a signed document (verified in pre-production, against what manual
+ *   14.18 says) mark the document as downloaded and remove it from the "signed but not downloaded"
+ *   queue.
  * - `sensitive_read`: a GET without side effects, but it returns a link that allows acting: the
  *   VIDremote signing link lets whoever opens it sign (`GET .../vidremoteurl`). Enabled with
  *   `VIDSIGNER_ALLOW_SIGNING_LINKS` and does NOT carry `readOnlyHint`.

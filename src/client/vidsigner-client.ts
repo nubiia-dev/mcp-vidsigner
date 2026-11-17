@@ -242,7 +242,12 @@ export class VidSignerClient {
     );
   }
 
-  /** `GET /documents/{id}`. Document in any status (does not mark it as downloaded, manual 14.18). */
+  /**
+   * `GET /documents/{id}`. Document in any status. On a SIGNED document it MARKS IT AS DOWNLOADED
+   * (`Downloaded=true`, it leaves the signed-not-downloaded queue), contrary to what manual 14.18
+   * says; verified in pre-production on 17/11/2026. On unsigned or rejected documents the flag does
+   * not change.
+   */
   async getDocument(docGuid: string): Promise<DocumentContent> {
     return this.call(
       { name: 'documents.get', method: 'GET', ...READ },

@@ -243,19 +243,20 @@ const getSignatureEvidence = defineTool({
 
 const getVidMobileSignatureRequest = defineTool({
   name: 'vidsigner_get_vidmobile_signature_request',
-  title: 'Get VIDmobile signature request (CMS)',
+  title: 'Get VIDmobile signature request (CMS) - not usable with subscription tokens',
   domain: 'signature',
   api: 'rest',
   risk: 'read',
   endpoint: 'GET /vidmobileuser/signaturerequest/{id}',
   whenToUse: 'you need the CMS container of a VIDmobile signature request (Swisscom integration).',
-  docSummary: 'Returns the CMS container of a VIDmobile signature request and saves it to disk.',
+  docSummary:
+    'Not usable with subscription tokens (always 401 with the credentials of this MCP). Returns the CMS container of a VIDmobile signature request and saves it to disk.',
   notes: [
     'Only in the OpenAPI; the manual does not document it.',
     'It does NOT accept the subscription token this MCP uses: the API answers 401 "Invalid Authentication Token Role. Accepted Roles: vidmobilecert\\swisscom. Presented Role: subscription" (verified in pre-production). It needs the token of a VIDmobile user (role vidmobilecert), so with the credentials of this MCP it always fails.',
   ],
   description:
-    'Returns the CMS signature container of a VIDmobile signature request (GET /vidmobileuser/signaturerequest/{id}, Swisscom integration). The CMS is saved to disk. Only in the OpenAPI; undocumented in the manual. With the subscription token this MCP uses the API answers 401 (role "subscription" presented, only vidmobilecert/swisscom accepted): it needs a VIDmobile user token, which this MCP does not send.',
+    'NOT USABLE WITH SUBSCRIPTION TOKENS: with the credentials of this MCP it always answers 401, so do not call it. Returns the CMS signature container of a VIDmobile signature request (GET /vidmobileuser/signaturerequest/{id}, Swisscom integration). The CMS is saved to disk. Only in the OpenAPI; undocumented in the manual. With the subscription token this MCP uses the API answers 401 (role "subscription" presented, only vidmobilecert/swisscom accepted): it needs a VIDmobile user token, which this MCP does not send.',
   inputSchema: { requestId: id('Signature request id.') },
   handler: async ({ requestId }, { rest, files }) => {
     const res = await rest.getVidMobileSignatureRequest(requestId);
