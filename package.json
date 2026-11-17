@@ -1,0 +1,122 @@
+{
+  "name": "@nubiia/mcp-vidsigner",
+  "mcpName": "io.github.nubiia-dev/mcp-vidsigner",
+  "version": "0.1.0",
+  "description": "Unofficial, community-maintained MCP server for the VIDsigner API: e-signature, e-delivery and management for AI assistants like Claude. Not affiliated with, endorsed or sponsored by Validated ID. VIDsigner is a trademark of Validated ID, S.L. Built by Nubiia.",
+  "type": "module",
+  "main": "dist/client/index.js",
+  "types": "dist/client/index.d.ts",
+  "bin": {
+    "mcp-vidsigner": "dist/index.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/client/index.d.ts",
+      "default": "./dist/client/index.js"
+    },
+    "./client": {
+      "types": "./dist/client/index.d.ts",
+      "default": "./dist/client/index.js"
+    },
+    "./webhooks": {
+      "types": "./dist/client/webhooks.d.ts",
+      "default": "./dist/client/webhooks.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsx src/index.ts",
+    "lint": "eslint src tests scripts",
+    "lint:fix": "eslint src tests scripts --fix",
+    "format": "prettier --write src tests scripts",
+    "format:check": "prettier --check src tests scripts",
+    "typecheck": "tsc --noEmit -p tsconfig.test.json",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "test:it": "VIDSIGNER_IT=1 vitest run tests/integration",
+    "gen:types": "node scripts/gen-types.mjs",
+    "gen:schemas": "tsx scripts/gen-body-schemas.ts",
+    "gen:errors": "node scripts/gen-error-catalog.mjs",
+    "gen:manual-fields": "tsx scripts/extract-manual-fields.ts",
+    "gen:docs": "npm run build && node scripts/gen-docs.mjs && prettier --write docs/TOOLS.md",
+    "prepack": "npm run build",
+    "prepare": "husky",
+    "check:package": "node scripts/check-package.mjs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nubiia-dev/mcp-vidsigner.git"
+  },
+  "bugs": {
+    "url": "https://github.com/nubiia-dev/mcp-vidsigner/issues"
+  },
+  "homepage": "https://nubiia.es",
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=20.11"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "vidsigner",
+    "vidsigner-api",
+    "validated-id",
+    "e-signature",
+    "electronic-signature",
+    "firma-electronica",
+    "e-delivery",
+    "certified-delivery",
+    "digital-signature",
+    "eidas",
+    "api",
+    "claude",
+    "anthropic",
+    "ai",
+    "llm",
+    "automation",
+    "nubiia"
+  ],
+  "author": {
+    "name": "Nubiia",
+    "email": "hola@nubiia.es",
+    "url": "https://nubiia.es"
+  },
+  "license": "MIT",
+  "lint-staged": {
+    "*.{ts,js,mjs}": [
+      "eslint --fix"
+    ],
+    "*.{json,md}": [
+      "prettier --write"
+    ]
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.2",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.43",
+    "@typescript-eslint/eslint-plugin": "^8.73.0",
+    "@typescript-eslint/parser": "^8.73.0",
+    "@vitest/coverage-v8": "^4.1.12",
+    "dotenv": "^16.6.1",
+    "eslint": "^10.15.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.4.0",
+    "openapi-typescript": "^7.13.0",
+    "prettier": "^3.10.1",
+    "tsx": "^4.23.15",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.12"
+  }
+}

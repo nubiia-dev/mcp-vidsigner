@@ -1,6 +1,22 @@
 node_modules/
 dist/
-*.log
-.env
-.DS_Store
 coverage/
+*.log
+.DS_Store
+.vscode/
+.idea/
+
+# Credentials and local environment
+.env
+.env.*
+!.env.example
+
+# npm pack output
+*.tgz
+
+# Files written by the MCP server at runtime
+vidsigner-output/
+
+# Validated ID documentation is not redistributed: keep it out of version control
+spec/VIDsignerAPI_Rest_Lastest.txt
+spec/VIDsignerOpenAPI_Lastest.json
