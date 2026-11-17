@@ -72,7 +72,7 @@ async function main(): Promise<void> {
   });
 
   const sec = config.security;
-  logger.info(`vidsigner-mcp v${VERSION} started`, {
+  logger.info(`mcp-vidsigner v${VERSION} started`, {
     env: sec.environment,
     tools: registered.length,
     skipped: skipped.length,
@@ -114,6 +114,6 @@ async function main(): Promise<void> {
 
 main().catch((err: unknown) => {
   const msg = err instanceof Error ? err.message : String(err);
-  console.error(`[vidsigner-mcp] FATAL: ${msg}`);
+  console.error(`[mcp-vidsigner] FATAL: ${msg}`);
   process.exit(1);
 });

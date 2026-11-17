@@ -50,7 +50,7 @@ export interface CreatedServer {
 export function createServer(opts: CreateServerOptions): CreatedServer {
   const logger = opts.logger ?? silentLogger;
   const server = new McpServer(
-    { name: 'vidsigner-mcp', version: VERSION },
+    { name: 'mcp-vidsigner', version: VERSION },
     { instructions: SERVER_INSTRUCTIONS },
   );
   const ctx: ToolContext = {
