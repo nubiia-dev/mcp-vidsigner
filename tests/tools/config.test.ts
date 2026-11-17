@@ -117,6 +117,17 @@ describe('config: environment and security defaults', () => {
     );
   });
 
+  it('accepts yes, 1 and no as booleans and rejects the Spanish "si"/"sí"', () => {
+    const allow = (v: string) => load({ VIDSIGNER_ENV: 'pro', VIDSIGNER_ALLOW_WRITE: v });
+    expect(allow('yes').security.allowWrite).toBe(true);
+    expect(allow('1').security.allowWrite).toBe(true);
+    expect(allow('no').security.allowWrite).toBe(false);
+    for (const v of ['si', 'sí']) {
+      expect(() => allow(v)).toThrow(ConfigError);
+      expect(() => allow(v)).toThrow(/invalid boolean value/);
+    }
+  });
+
   it('rejects invalid values', () => {
     expect(() => load({ VIDSIGNER_ENV: 'staging' })).toThrow(ConfigError);
     expect(() => load({ VIDSIGNER_ALLOW_WRITE: 'maybe' })).toThrow(/boolean/);
