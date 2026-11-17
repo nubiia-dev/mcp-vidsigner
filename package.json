@@ -1,7 +1,7 @@
 {
   "name": "@nubiia/mcp-vidsigner",
   "mcpName": "io.github.nubiia-dev/mcp-vidsigner",
-  "version": "0.1.0",
+  "version": "0.0.0",
   "description": "Unofficial, community-maintained MCP server for the VIDsigner API: e-signature, e-delivery and management for AI assistants like Claude. Not affiliated with, endorsed or sponsored by Validated ID. VIDsigner is a trademark of Validated ID, S.L. Built by Nubiia.",
   "type": "module",
   "main": "dist/client/index.js",
@@ -105,6 +105,11 @@
     "zod": "^4.6.7"
   },
   "devDependencies": {
+    "@semantic-release/changelog": "^6.0.3",
+    "@semantic-release/exec": "^7.1.0",
+    "@semantic-release/git": "^10.0.1",
+    "@semantic-release/github": "^12.0.11",
+    "@semantic-release/npm": "^13.2.0",
     "@types/node": "^20.19.43",
     "@typescript-eslint/eslint-plugin": "^8.73.0",
     "@typescript-eslint/parser": "^8.73.0",
@@ -115,6 +120,7 @@
     "lint-staged": "^16.4.0",
     "openapi-typescript": "^7.13.0",
     "prettier": "^3.10.1",
+    "semantic-release": "^25.0.9",
     "tsx": "^4.23.15",
     "typescript": "^5.9.3",
     "vitest": "^4.1.12"

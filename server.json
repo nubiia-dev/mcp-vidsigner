@@ -2,7 +2,7 @@
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-10-17/server.schema.json",
   "name": "io.github.nubiia-dev/mcp-vidsigner",
   "description": "Unofficial MCP server for the VIDsigner API: e-signature, e-delivery and management (81 tools)",
-  "version": "0.1.0",
+  "version": "0.0.0",
   "homepage": "https://github.com/nubiia-dev/mcp-vidsigner",
   "license": "MIT",
   "author": {
@@ -17,7 +17,7 @@
     {
       "registryType": "npm",
       "identifier": "@nubiia/mcp-vidsigner",
-      "version": "0.1.0",
+      "version": "0.0.0",
       "runtimeHint": "npx",
       "transport": {
         "type": "stdio"
