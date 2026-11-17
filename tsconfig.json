@@ -13,7 +13,7 @@
     "skipLibCheck": true,
     "resolveJsonModule": true,
     "declaration": true,
-    "sourceMap": true,
+    "sourceMap": false,
     "noImplicitOverride": true,
     "noFallthroughCasesInSwitch": true
   },

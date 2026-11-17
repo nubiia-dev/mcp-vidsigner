@@ -4,7 +4,8 @@
  *
  * 1. `npm pack --dry-run` lists only what may ship: `dist/`, README.md, LICENSE, CHANGELOG.md and
  *    package.json. In particular no sources, tests, docs, `data/` or vendor documentation.
- * 2. No file of the package is, or looks like, Validated ID documentation.
+ * 2. No file of the package is, or looks like, Validated ID documentation, nor a source map
+ *    (`.js.map` files point at the sources, which are not published).
  * 3. server.json (MCP Registry) agrees with package.json: name, version, package identifier and a
  *    description within the registry limit of 100 characters.
  *
@@ -35,6 +36,7 @@ const files = JSON.parse(pack.stdout)[0].files.map((f) => f.path);
 const ALLOWED = [/^dist\//, /^README\.md$/, /^LICENSE$/, /^CHANGELOG\.md$/, /^package\.json$/];
 const FORBIDDEN = [
   /VIDsigner(API|OpenAPI)/i,
+  /\.map$/,
   /\.txt$/,
   /\.pdf$/i,
   /^spec\//,
