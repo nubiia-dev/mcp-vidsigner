@@ -9,6 +9,11 @@ on:
   push:
     branches: [main]
 
+# One release at a time; a run in progress is never cancelled (it could leave a half-published release).
+concurrency:
+  group: release
+  cancel-in-progress: false
+
 jobs:
   release:
     runs-on: ubuntu-latest

@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: [main, development]
 
+permissions:
+  contents: read
+
 jobs:
   ci:
     name: Lint + Typecheck + Build + Test (Node ${{ matrix.node-version }})
