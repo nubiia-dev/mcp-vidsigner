@@ -15,6 +15,7 @@ The MCP VIDsigner server is an open-source Model Context Protocol (MCP) server t
 - **VIDsigner credentials**: your subscription name and password, and optionally your OAuth client ID and secret and partner credentials, provided through environment variables
 - **Request data**: the documents, signer names, email addresses, phone numbers and other fields you or your AI assistant send through the Server
 - **Response data**: documents, evidence reports, statuses and other information returned by VIDsigner
+- **Source IP in the document log**: VIDsigner records every API call on a document, reads included, in the document log (`GET /documents/{id}/loginfo`, tool `vidsigner_get_document_log`) together with the IP of the client that made it. Anyone who can see that log sees the IP addresses of the machines that run this Server.
 
 ### 2.2 How Data is Used
 

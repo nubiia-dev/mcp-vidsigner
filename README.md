@@ -97,7 +97,7 @@ Everything is configured through environment variables (see [`.env.example`](.en
 
 `VIDSIGNER_BASE_URL` and `VIDSIGNER_MGMT_BASE_URL` are validated at startup: `https:` scheme, **no credentials in the URL**, no port (except 443), no query or fragment, the **exact host** of THEIR API and environment (an allow-list; host case and the trailing dot are normalised, and the signature and management APIs are not interchangeable) and the **exact path** (`/api/v3.0` and `/api`). If they do not comply, or point at the other environment's host, the server does not start. `localhost` and `127.0.0.1` (also over `http:`) are only accepted with `VIDSIGNER_ALLOW_LOCAL_HOSTS=true` and `VIDSIGNER_ENV=pre`.
 
-Folder paths must be absolute after expanding `~` and `~/` (a `.env` file does not expand `$HOME`). At startup the output folder is created with mode 0700 and, if an input folder does not exist, a warning is logged (it is not created). Boolean variables accept `true`, `1` or `yes` (and `false`, `0` or `no`).
+Folder paths must be absolute after expanding `~` and `~/` (a `.env` file does not expand `$HOME`). At startup the output folder is created with mode 0700 and, if an input folder does not exist, a warning is logged (it is not created). Boolean variables accept `true`, `1` or `yes` (and `false`, `0` or `no`); anything else, `si` and `sí` included, stops the server with a configuration error.
 
 ### Claude Desktop
 
@@ -350,6 +350,14 @@ Needs `VIDSIGNER_CLIENT_ID/SECRET` (JWT), `VIDSIGNER_ALLOW_WRITE=true` (the defa
 
 The link is a bearer credential: hand it only to the signer, through your own channel. If the signer was not created with `SkipSignatureEmail=true`, step 3 answers 409/16601. Use test signers only in pre.
 
+Things to know before using it (verified in pre-production, 17/11/2026):
+
+- With `SkipSignatureEmail=true` the signer must **not** carry `NotificationEmailMessage` (400/12544). Without skip, an `emailandsms` signer **must** carry it (400/12541).
+- Every call to `vidsigner_get_signature_url` leaves the evidence `SIGNATUREURL_RETRIEVED` in the evidence report of the document (VIDsigner does not document it). Do not call it exploratively or repeatedly.
+- The URL (`https://<pre->vidremote.vidsigner.net/loading?emailid=<guid>&lang=es`) is **stable per signer**: it is the same one the resend email carries. It cannot be rotated; only expiring or deleting the document invalidates it.
+- With `emailandsms` the signer must also pass the OTP sent to their phone, so the link is the first factor, not the only one (except with `AllowEmptyPhoneNumber`).
+- Without skip, the link only travels in the first email VIDsigner sends.
+
 ### 3. Download the signed document and the evidence report
 
 ```text
@@ -360,7 +368,7 @@ vidsigner_get_document_report   {"docGuid": "0b6f1d0e-...", "lang": "en"}
   -> { "savedTo": "<output>/...-report-0b6f1d0e-...-en.pdf" }
 ```
 
-`vidsigner_get_document` does **not** mark the document as downloaded; `vidsigner_download_signed_document` does (and takes it out of the queue of signed-but-not-downloaded documents that other integrations of the same subscription may be consuming), which is why in `pro` it only exists with `VIDSIGNER_ALLOW_MARK_DOWNLOADED=true`. The report of an unsigned document that has not expired answers 409/50013. Files are saved with mode 0600 in `VIDSIGNER_OUTPUT_DIR`; the tools return the path, never the content.
+`vidsigner_get_document` does not change the `Downloaded` flag (the call is recorded in the document log, see [the log note](#known-restrictions-verified-in-pre-production-17112026)); `vidsigner_download_signed_document` does (and takes it out of the queue of signed-but-not-downloaded documents that other integrations of the same subscription may be consuming), which is why in `pro` it only exists with `VIDSIGNER_ALLOW_MARK_DOWNLOADED=true`. The report of an unsigned document that has not expired answers 409/50013. Files are saved with mode 0600 in `VIDSIGNER_OUTPUT_DIR`; the tools return the path, never the content.
 
 ### 4. Walk through the pending documents with pagination
 
@@ -374,15 +382,19 @@ vidsigner_list_documents {"filter": "unsigned", "pageNumber": 2, "pageSize": 50,
 
 `pageSize` goes from 1 to 99 (with 100 or more the API answers 400). To fetch everything at once: `{"filter": "unsigned", "fetchAll": true, "maxPages": 50}`; **if the answer carries `truncated: true`, the list is incomplete**: raise `maxPages` or filter. `orderType` accepts `asc`, `des` and `desc` (`des` is what is sent). An empty list comes back as `[]`.
 
-## Known restrictions (verified in pre-production, 16/11/2026)
+## Known restrictions (verified in pre-production, 17/11/2026)
 
-- **Writes require a JWT.** `POST /documents` with Basic answers 401 "Token not found". With the subscription alone you can read. You need to ask Validated ID for a client ID and secret. Without them, writes fail in the client before anything is sent.
-- **`SkipSignatureEmail` and `AllowSkipEmail`.** `GET /signature/{SignerGUID}/vidremoteurl` only works if the signer was created with `SkipSignatureEmail=true` (otherwise 409/16601). The subscription needs the `AllowSkipEmail` permission (otherwise 409/40111). `url_return` is appended to the URL in base64.
+- **Requirement: writes need a JWT.** The JWT is obtained with `VIDSIGNER_CLIENT_ID` and `VIDSIGNER_CLIENT_SECRET`, which Validated ID issues for your subscription. `POST /documents` with Basic credentials answers 401 "Token not found"; the subscription name and password alone are enough to read.
+- **`NotificationEmailMessage` and `SkipSignatureEmail` (400/12541 and 400/12544).** In `POST /documents`, an `emailandsms` signer **without** `SkipSignatureEmail` needs `NotificationEmailMessage` (otherwise 400/12541 "NotificationEmailMessage cannot be null for Signer: X"); with `SkipSignatureEmail=true` it must be omitted or `null` (otherwise 400/12544 "NotificationEmailMessage must be null if SkipSignatureEmail is true for Signer: X"). Neither code is in the vendor manual: they are observed in pre and kept apart from the manual catalog (`OBSERVED_ERRORS`). The rule is verified for `POST /documents`; for `POST /documentbatch` it is assumed, not verified. The client does not validate it: the API answers and the error carries a hint.
+- **`SkipSignatureEmail` and `AllowSkipEmail`.** `GET /signature/{SignerGUID}/vidremoteurl` only works if the signer was created with `SkipSignatureEmail=true` (otherwise 409/16601). The subscription needs the `AllowSkipEmail` permission (otherwise 409/40111). `url_return` is appended to the URL in base64. Each call records the evidence `SIGNATUREURL_RETRIEVED` (undocumented by the vendor) in the report of the document; the URL is stable per signer and cannot be rotated; and with `emailandsms` the signer still has to pass the OTP (see flow 2). `PUT /signature/{SignerGUID}/vidremoteurl` by email also works on documents created with skip (200 without body, evidence `EMAIL_RESENT`).
+- **The document log records every call, reads included.** `GET /documents/{id}` leaves "Downloaded document. Current Status = Unsigned" in the log although `Downloaded` stays `false`, and `GET /documents/{id}/loginfo` lists all the API calls on the document with the **IP of the client that made them**. **Whoever can see the log of a document sees the IPs of the machines that run this MCP** (see [`PRIVACY.md`](PRIVACY.md)).
+- **`GET /documentinfo/{guid}`.** The answer uses `SignerGroups` (the client also returns `SignersGroups`), the signer email comes back as `Email` and `Evidences` can be `null` (the types say so: read it as `Evidences ?? []`). Evidences seen: `EMAIL_SENT`, `EMAIL_RESENT` and `SIGNATUREURL_RETRIEVED`.
+- **Emails sent by VIDsigner.** They leave from `sign@vidsigner.net` with the name of `IssuerName`. **Integrator note:** configure the URL of the privacy policy of the issuer in VIDsigner; if it is missing, the GDPR footer of the email shows "n/a".
 - **`documentlist` pagination.** `pageNumber` starts at 1 and `pageSize` must be greater than 0 and less than 100. If any pagination parameter is sent, the API requires both: the client fills in `pageNumber=1` and `pageSize=50` by default.
 - **Empty lists answer 404, not `[]`.** `GET /documentlist` (50002) and `GET /devices` (70001) are normalised to an empty list by their code. `GET /signeddocuments` and the management listings answer 404 with no body (or "list is empty", or a bare "Elements not found") for an empty collection: those are normalised too. A 404 that names a resource ("Element not found. No vidmobile user...", "Customer not exist") **is an error**, not an empty list.
 - **`documentlist`**: `searchText` of 3 to 10 characters (400/10601); `orderBy` only `FileName`, `DocStatus`, `Downloaded`, `AdditionalData` or `UploadTime` (the server also advertises `DocGUI` but answers 400/10500); `orderType` is `asc`, `des` or `desc`: the server only understands `asc` and `des` (with `desc` it answers 400/10521, checked in pre with a GET on 16/11/2026), so `desc` is accepted and sent as `des`. `fetchAll` returns `truncated: true` if it stops at `maxPages`.
-- **Spellings that differ between the OpenAPI and the manual** (`eMail`/`Email`, `APP`/`App`, `CertificateGUI`/`CertificateGUID`, `WhatsApp`/`whatsapp`, `SignersGroups`/`SignerGroups`, `BatchGUI`/`Guid`, `DocGUI`/`GUID`): the tools accept both, normalise them and, where there is a real doubt, send both. The decision lives in `src/tools/aliases.ts` and is **pending verification in pre-production with a ClientID** (writes require a JWT).
-- **`GET /signeddocuments/{id}` marks the document as downloaded** (manual 14.7). Other integrations of the same subscription may consume that queue. In `pro` the tool requires `VIDSIGNER_ALLOW_MARK_DOWNLOADED=true`; to read a document without side effects use `vidsigner_get_document` (`GET /documents/{id}`).
+- **Spellings that differ between the OpenAPI and the manual.** The tools accept both, normalise them and, where there is a real doubt, send both. The decision lives in `src/tools/aliases.ts`. **Verified (17/11/2026, `POST /documents`):** the signer's `Email`/`eMail`. The binder of VIDsigner is case-insensitive: `Email` alone, `eMail` and both with the same value answer 200, and if the two values differ **the last key of the JSON wins**. That is why the tools reject two different values, and only `Email` is sent. **Still pending verification in pre-production** (writes require a JWT): `APP`/`App`, `CertificateGUI`/`CertificateGUID`, `WhatsApp`/`whatsapp`, the `Email`/`eMail` of the recipients and of the batch signers, and the rest of the spellings of the manual (`SignersGroups`/`SignerGroups`, `BatchGUI`/`Guid`, `DocGUI`/`GUID`).
+- **`GET /signeddocuments/{id}` marks the document as downloaded** (manual 14.7). Other integrations of the same subscription may consume that queue. In `pro` the tool requires `VIDSIGNER_ALLOW_MARK_DOWNLOADED=true`; to read a document without changing the `Downloaded` flag use `vidsigner_get_document` (`GET /documents/{id}`; the call is recorded in the document log).
 - **`vidsigner_mgmt_update_subscription`** takes no `SubscriptionPass`: by default it re-sends the current password (read server-side) and with `rotatePassword=true` it generates a 20-character one, **saves it first** to a 0600 file (after checking that the output folder is writable) and only then does the PUT; it returns only the path. If the PUT fails, the file is renamed to `.failed` and the error says so: on a 4xx it says the password was **not** applied and can be deleted; on a network error, a timeout or a 5xx it says it is unknown whether the password was applied and that you must NOT delete the file (it may be the only copy of the password in force). If it could not be renamed, the message gives the real path of the file. **A rotated password invalidates the credentials of this MCP (if it is the same subscription) and those of any other consumer of the same credentials (for example your backend) until their environment is updated**; the answer warns about it. The password never goes through the model.
 - **Empty lists without a code**: a 404 without a catalog code (empty body or "list is empty") is normalised to an empty list and leaves a `warn` in the log, to detect a missing parent resource mistaken for an empty one.
 - **`null` fields**: where the manual documents it (`SignerName` = `SignerFullNameOrNULL`, `PhoneNumber` with `AllowEmptyPhoneNumber`, `DeviceName`, `Email`, `SignaturePolicy` = `FacturaeOrNull`, and the optional fields of customers and subscriptions) the tools accept `null` and send it.
@@ -399,11 +411,10 @@ What the server does **not** do, or cannot guarantee today:
 - **Passwords and PINs as arguments.** `vidsigner_mgmt_create_vidmobile_user` and `vidsigner_mgmt_update_vidmobile_user_password` receive the user's password, and `vidsigner_mgmt_add_vidmobile_user_certificate`, `vidsigner_mgmt_add_stamp_certificate` and `vidsigner_sign_xml` the certificate PIN, as an argument of the call: they go through the model's context. Only the subscription password is resolved on the server (`update_subscription`).
 - **Free text without schema or list.** The URL check in `eMailBody`, `Description`... detects `http(s)://` and `www.`; it does not detect scheme-less or obfuscated addresses, nor links that the email client builds.
 - **Size of `tools/list`.** With all 81 tools enabled the listing is around 160 KB; the schemas of `create_document`, `add_document_to_batch` and `create_batch` account for about 68 KB of that. To reduce it, do not enable management or writes if you do not need them.
-- **Without a ClientID you cannot write** (nor verify the writes): see the first point of the restrictions.
 
 Open questions, **pending confirmation with Validated ID or with full credentials**:
 
-1. **Spellings to verify with a ClientID.** The ones that differ between the OpenAPI and the manual (`eMail`/`Email` in signers and recipients, `APP`/`App`, `CertificateGUI`/`CertificateGUID`, `WhatsApp`/`whatsapp`) are accepted and, where there is a real doubt, both are sent. Which spelling each endpoint really accepts can only be verified with a real `POST` (it needs a JWT). The full table, with its status, is at the end of [`docs/TOOLS.md`](docs/TOOLS.md).
+1. **Spellings to verify with a ClientID.** The signer's `Email`/`eMail` of `POST /documents` is verified. The rest (`eMail`/`Email` in recipients and batch signers, `APP`/`App`, `CertificateGUI`/`CertificateGUID`, `WhatsApp`/`whatsapp`) are accepted and, where there is a real doubt, both are sent. Which spelling each endpoint really accepts can only be verified with a real `POST` (it needs a JWT). The full table, with its status, is at the end of [`docs/TOOLS.md`](docs/TOOLS.md).
 2. **Format of the VIDmobile token response** (`GET /vidmobileusers/{legalid}/token`): the manual lists it without a detail section. It is saved as is to a 0600 file.
 3. **Valid values of `state`** in `PUT /vidmobileusers/{legalid}/state/{state}`: undocumented (probably `active` and `inactive`). Try it only in pre.
 4. **`DELETE /documentbatch/{id}`** only appears in Annex III of the manual: it may not exist in your version.
@@ -510,6 +521,8 @@ Yes, set `VIDSIGNER_ENABLE_MGMT=true` and the partner credentials. The 46 manage
 ## License
 
 [MIT](LICENSE). The license covers the code of this repository only; it grants no rights over VIDsigner, its documentation or its trademarks.
+
+Error codes and messages as returned by the VIDsigner API, © Validated ID.
 
 ## Related
 
