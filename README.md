@@ -450,6 +450,10 @@ VIDSIGNER_IT=1 VIDSIGNER_IT_ENV_FILE=/path/.env npm run test:it
 
 It only runs if `VIDSIGNER_IT=1`, the `.env` file with credentials exists and the environment is `pre`. It never creates or sends anything.
 
+### Commits and releases
+
+Commits follow [Conventional Commits](https://www.conventionalcommits.org/) (`feat:`, `fix:`, `perf:`, `docs:`, `refactor:`, `test:`, `build:`, `ci:`, `chore:`; `!` or a `BREAKING CHANGE:` footer for breaking changes). Releases are automated with [semantic-release](https://semantic-release.gitbook.io/): merging `development` into `main` runs the `Release` workflow, which derives the version from the commits (`feat` is a minor bump, `fix` and `perf` a patch, a breaking change a major one; other types do not release), updates `CHANGELOG.md`, publishes to npm with provenance, creates the `vX.Y.Z` tag and the GitHub release, and publishes `server.json` to the MCP Registry. The version in `package.json` and `server.json` is managed by the release commit: do not edit it by hand. The full flow is in [`CONTRIBUTING.md`](CONTRIBUTING.md#releasing-maintainers); the history of released versions is in [`CHANGELOG.md`](CHANGELOG.md).
+
 ### Vendor documentation and regenerating the generated files
 
 The VIDsigner OpenAPI document and the REST and management manuals are the property of Validated ID and are available to its customers. **This repository does not redistribute them**: it versions only the artifacts generated from them (TypeScript types, zod schemas, the error catalog, an API surface file with operation, parameter and property names, and the field-name fixtures used by the tests). The tests that compare those artifacts against the vendor documents are skipped, with a warning, unless you provide it.
