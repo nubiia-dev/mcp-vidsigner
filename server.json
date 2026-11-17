@@ -1,0 +1,65 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-10-17/server.schema.json",
+  "name": "io.github.nubiia-dev/mcp-vidsigner",
+  "description": "Unofficial MCP server for the VIDsigner API: e-signature, e-delivery and management (81 tools)",
+  "version": "0.0.0",
+  "homepage": "https://github.com/nubiia-dev/mcp-vidsigner",
+  "license": "MIT",
+  "author": {
+    "name": "Nubiia",
+    "url": "https://nubiia.es"
+  },
+  "repository": {
+    "url": "https://github.com/nubiia-dev/mcp-vidsigner",
+    "source": "github"
+  },
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "@nubiia/mcp-vidsigner",
+      "version": "0.0.0",
+      "runtimeHint": "npx",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "VIDSIGNER_SUBSCRIPTION_NAME",
+          "description": "Name of your VIDsigner subscription (Basic auth for reads and JWT user).",
+          "format": "string",
+          "isRequired": true,
+          "isSecret": false
+        },
+        {
+          "name": "VIDSIGNER_SUBSCRIPTION_PASS",
+          "description": "Password of your VIDsigner subscription.",
+          "format": "string",
+          "isRequired": true,
+          "isSecret": true
+        },
+        {
+          "name": "VIDSIGNER_CLIENT_ID",
+          "description": "OAuth client ID issued by Validated ID. Required for write operations (JWT).",
+          "format": "string",
+          "isRequired": false,
+          "isSecret": false
+        },
+        {
+          "name": "VIDSIGNER_CLIENT_SECRET",
+          "description": "OAuth client secret issued by Validated ID. Required for write operations (JWT).",
+          "format": "string",
+          "isRequired": false,
+          "isSecret": true
+        },
+        {
+          "name": "VIDSIGNER_ENV",
+          "description": "Environment: pre (pre-production, default) or pro (production, read-only unless enabled).",
+          "format": "string",
+          "isRequired": false,
+          "isSecret": false,
+          "default": "pre"
+        }
+      ]
+    }
+  ]
+}

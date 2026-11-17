@@ -1,0 +1,494 @@
+{
+  "$comment": "Descriptions, enumerations and limits of the fields of the signature API request bodies, written from the REST manual (14.5, 14.20, 14.21, 14.25). The OpenAPI document carries no descriptions. Key: \"Schema.Field\" (short OpenAPI schema name) or \"*.Field\" for any schema; the most specific wins. Per-field options: description, enum, min, max, minLength, maxLength, minItems, format (url), required, default. Consumed by scripts/gen-body-schemas.ts.",
+  "version": "1.0.0",
+  "fields": {
+    "SendDocumentDTO.SignersGroups": {
+      "description": "Groups of signers; each group is an object with its signers.",
+      "required": true,
+      "minItems": 1
+    },
+    "SendDocumentDTO.OrderedGroups": {
+      "description": "If true the groups must sign in order; if false any group can sign at any time.",
+      "default": false
+    },
+    "SendBatchDTO.SignersGroups": {
+      "description": "Groups of signers of the batch; every document added to the batch is signed by these signers.",
+      "required": true,
+      "minItems": 1
+    },
+    "SendBatchDTO.OrderedGroups": {
+      "description": "If true the groups must sign in order; if false any group can sign at any time.",
+      "default": false
+    },
+    "*.FileName": {
+      "description": "Name of the file. Default: the name of filePath."
+    },
+    "SendDocumentDTO.IssuerName": {
+      "description": "Document issuer name shown to the signers (max 255). Required for the remote (emailandsms) channel.",
+      "maxLength": 255
+    },
+    "SendBatchDTO.IssuerName": {
+      "description": "Issuer name shown to the signers (max 255). Required for batches.",
+      "maxLength": 255,
+      "required": true
+    },
+    "EDeliveries.EDeliveryDTO.IssuerName": {
+      "description": "Name of the issuer shown to the recipient.",
+      "required": true
+    },
+    "*.ExpirationDate": {
+      "description": "Date after which the document is deleted from VIDsigner. Format dd/MM/yyyy HH:mm:ss."
+    },
+    "*.NotificationURL": {
+      "description": "Webhook endpoint that receives status notifications. When VIDSIGNER_ALLOWED_NOTIFICATION_HOSTS is set, its host must be in that list. The API stores it with a trailing / added. In a batch it must be identical in every document of the batch (otherwise 400/12205).",
+      "format": "url"
+    },
+    "*.AdditionalData": {
+      "description": "Free text (max 1000 characters) returned with the signed document; searchable with vidsigner_search.",
+      "maxLength": 1000
+    },
+    "EDeliveries.EDeliveryDTO.AdditionalData": {
+      "description": "Free text about the e-delivery returned with it."
+    },
+    "*.Tag": {
+      "description": "Tag(s) used to filter documents in the VIDsigner app, separated by comma."
+    },
+    "*.Description": {
+      "description": "Description of the document (max 255).",
+      "maxLength": 255
+    },
+    "SendDocumentDTO.SenderName": {
+      "description": "Sender name (max 255). Only valid when the document has at least one centralized (mobile) signer; shown in the centralized portal.",
+      "maxLength": 255
+    },
+    "SendBatchDTO.SenderName": {
+      "description": "Sender name (max 255). Only valid with centralized (mobile) signers.",
+      "maxLength": 255
+    },
+    "SendDocumentDTO.IssuerIdentifier": {
+      "description": "Identifier of the issuer. Present in the OpenAPI; not described in the manual."
+    },
+    "*.ConvertFormToReadOnly": {
+      "description": "If true the PDF is converted to read-only. Recommended for PDFs that contain editable forms."
+    },
+    "*.RejectionOptions": {
+      "description": "Rejection reasons the signer picks from a dropdown when rejecting. At document level they apply to every signer; at signer level, to that signer only."
+    },
+    "RejectionOptionDTO.Id": { "description": "Rejection option identifier." },
+    "RejectionOptionDTO.Text": {
+      "description": "Rejection option description shown to the signer."
+    },
+    "*.SignedDocumentRecipients": {
+      "description": "Recipients that receive the signed document by email once the document is signed. VIDSIGNER_ALLOWED_EMAIL_DOMAINS restricts the domains."
+    },
+    "*.RejectedDocumentRecipients": {
+      "description": "Recipients that receive the rejection notice by email once the document is rejected. VIDSIGNER_ALLOWED_EMAIL_DOMAINS restricts the domains."
+    },
+    "DocumentRecipientDTO.Email": {
+      "description": "Email of the recipient (required). The manual spells it eMail; both are accepted.",
+      "required": true
+    },
+    "DocumentRecipientDTO.Language": {
+      "description": "Language of the email sent to the recipient, e.g. es."
+    },
+    "SendDocumentDTO.Appearance": {
+      "description": "Branding of the remote signing app and of the notification emails (remote channel only)."
+    },
+    "SendBatchDTO.Appearance": {
+      "description": "Branding of the remote signing app and of the notification emails (remote channel only)."
+    },
+    "DocAppearanceDTO.App": {
+      "description": "Customisation of the remote signing application. The manual spells it APP; both are accepted."
+    },
+    "DocAppearanceDTO.EmailNotification": {
+      "description": "Customisation of the notification emails."
+    },
+    "AppAppearanceDTO.Logo": {
+      "description": "URL of the corporate logo shown in the remote app. MANDATORY when Appearance.App is sent, together with the four colours (a missing colour answers 400/15600): without it the API answers 400/12200 \"Logo URL cannot be null or empty\" (verified in pre-production). The API downloads the image."
+    },
+    "AppAppearanceDTO.PrimaryColor": { "description": "Hexadecimal colour of the app header." },
+    "AppAppearanceDTO.PrimaryTextColor": {
+      "description": "Hexadecimal colour of the app header text."
+    },
+    "AppAppearanceDTO.SecondaryColor": { "description": "Hexadecimal colour of the app buttons." },
+    "AppAppearanceDTO.SecondaryTextColor": {
+      "description": "Hexadecimal colour of the app button text."
+    },
+    "EmailNotificationAppearanceDTO.CorporateLogo": {
+      "description": "URL of the corporate logo shown in the emails. Needed, together with CorporateLogoWidth, when EmailNotification is sent (verified in pre-production)."
+    },
+    "EmailNotificationAppearanceDTO.CorporateColor": {
+      "description": "Hexadecimal background colour of the emails."
+    },
+    "EmailNotificationAppearanceDTO.CorporateLogoWidth": {
+      "description": "Width of the corporate logo in the emails. Must be greater than 0 when EmailNotification is sent (otherwise 400/12305 \"The image width is not valid value. Value: 0\")."
+    },
+    "*.NotificationConfig": {
+      "description": "Which webhook notifications are sent to NotificationURL and how they are authenticated."
+    },
+    "*.DocNotification": { "description": "Notify document events (signed, rejected...)." },
+    "*.SignerNotification": { "description": "Notify each signer event." },
+    "*.CreatedDocNotification": { "description": "Notify when the document is created." },
+    "*.ExpiredDocNotification": { "description": "Notify when the document expires." },
+    "*.MinGroupNotification": {
+      "description": "Notify when a group reaches its minimum number of signatures."
+    },
+    "*.ApproverNotification": { "description": "Notify approver events." },
+    "BatchNotificationConfigDTO.BatchNotification": { "description": "Notify batch events." },
+    "*.AuthType": { "description": "Authentication of the webhook endpoint: BASIC or JWT." },
+    "*.APIKey": { "description": "Name/value pair sent to the webhook as API key." },
+    "APIKeyDTO.Name": { "description": "API key name (header name)." },
+    "APIKeyDTO.Value": {
+      "description": "API key value. A secret: never put real credentials in prompts."
+    },
+    "*.EmailStatusNotification": {
+      "description": "Email addresses notified of the status of the document."
+    },
+    "*.ExcludeParams": {
+      "description": "Do not append the query parameters to the notification URL."
+    },
+    "*.UseNotificationUrlAsIs": {
+      "description": "Use NotificationURL exactly as given, without adding path segments."
+    },
+
+    "SignerGroupDTO.Min": {
+      "description": "Minimum signatures to close the group. Triggers the notification and unlocks the next group when ordered. Default: all signers.",
+      "min": 1
+    },
+    "SignerGroupDTO.Max": {
+      "description": "Maximum signatures accepted; when every group reaches it the document is signed. Default: all signers.",
+      "min": 1
+    },
+    "SignerGroupDTO.OrderedSignatures": {
+      "description": "If true the signers of the group must sign in order."
+    },
+    "SignerGroupDTO.Signers": {
+      "description": "Signers of the group, one object per signature.",
+      "required": true,
+      "minItems": 1
+    },
+    "Signer.BatchSignerGroupDTO.Min": {
+      "description": "Minimum signatures to close the group. Default: all signers.",
+      "min": 1
+    },
+    "Signer.BatchSignerGroupDTO.Max": {
+      "description": "Maximum signatures accepted. Default: all signers.",
+      "min": 1
+    },
+    "Signer.BatchSignerGroupDTO.OrderedSignatures": {
+      "description": "If true the signers of the group must sign in order."
+    },
+    "Signer.BatchSignerGroupDTO.Signers": {
+      "description": "Signers of the group.",
+      "required": true,
+      "minItems": 1
+    },
+
+    "*.SignerName": {
+      "description": "Full name of the signer (required for remote signatures). The manual documents SignerFullNameOrNULL: null is accepted.",
+      "nullable": true
+    },
+    "*.TypeOfID": { "description": "Type of identity document, e.g. NIF, NIE, Passport." },
+    "*.NumberID": {
+      "description": "Identity document number. Only letters, spaces, numbers and . - _ are accepted."
+    },
+    "*.PhoneNumber": {
+      "description": "Signer phone in E.164 format, e.g. +34666666666. Required by the remote channel to send the OTP. Empty or null when AllowEmptyPhoneNumber is true. VIDSIGNER_ALLOWED_PHONE_PREFIXES restricts it.",
+      "nullable": true
+    },
+    "*.AllowEmptyPhoneNumber": {
+      "description": "Allow an empty phone number (remote channel, SignatureType=emailandsms)."
+    },
+    "*.OTPChannel": {
+      "description": "Primary channel to send the OTP to the signer: sms, whatsapp or smswhatsapp. The manual spells it WhatsApp; both are accepted and normalised to whatsapp.",
+      "enum": ["sms", "whatsapp", "smswhatsapp"]
+    },
+    "*.AdditionalInfo": {
+      "description": "Short extra information about the signer (max 25 characters, e.g. Director). Printed in the signature box when its appearance is EXTENDED.",
+      "maxLength": 25
+    },
+    "*.Language": {
+      "description": "Signer language. Allowed values depend on SignatureType: bio es, ca, cs, en, gl, nl, pl, eu, iw, it, de, fr, pt; emailandsms ar, br, ca, cs, de, es, en, eu, fi, fr, gl, hu, it, ko, nl, no, pl, pt, ro, zh; mobile with SendCentralizedSignerEmailNotification es, ca, en, de, fr, nl, pt."
+    },
+    "EDeliveries.EDeliveryDTO.Language": {
+      "description": "Language of the e-delivery notification, e.g. es.",
+      "required": true
+    },
+    "*.SendSignedDoc": {
+      "description": "Email the signed document to the signer once it is signed."
+    },
+    "*.DownloadDocument": {
+      "description": "Let the signer download and review the document during the signing flow before signing."
+    },
+    "*.LocalSignature": {
+      "description": "Allow signing with a local certificate stored in AutoFirma (remote channel). Values: no, optional, mandatory. With mandatory, AllowEmptyPhoneNumber must be true.",
+      "enum": ["no", "optional", "mandatory"]
+    },
+    "*.AllowSignatureDelegation": {
+      "description": "Allow the signer to delegate the signature to another person (remote channel)."
+    },
+    "*.SignatureType": {
+      "description": "Signature channel: emailandsms = VIDremote (link + OTP), bio = tablet, mobile = VIDmobile (centralized), smartcard, stamp = automatic seal.",
+      "enum": ["emailandsms", "bio", "mobile", "smartcard", "stamp"],
+      "required": true
+    },
+    "*.SkipSignatureEmail": {
+      "description": "If true VIDsigner does NOT email the signing link (remote channel only); fetch it with vidsigner_get_signature_url. Needs the AllowSkipEmail permission on the subscription (otherwise 409/40111). Only for the first signer when ordered, or any signer when unordered."
+    },
+    "*.Email": {
+      "description": "Signer email, used for notifications. If the signer has none, send \"null\" or an empty string. The manual spells it eMail; both are accepted. VIDSIGNER_ALLOWED_EMAIL_DOMAINS restricts the domains.",
+      "nullable": true
+    },
+    "*.DeviceName": {
+      "description": "Name of the tablet that must be used (bio channel). If null the signer can use any device of the subscription.",
+      "nullable": true
+    },
+    "*.PersonalCode": { "description": "Personal code of the signer set by the sender." },
+    "*.SignatureReason": { "description": "Reason why the signers should sign the document." },
+    "*.SendCentralizedSignerEmailNotification": {
+      "description": "Email the centralized (mobile) signer about the pending document. NotificationEmailMessage must not be empty."
+    },
+    "*.SSICredentials": {
+      "description": "Self-sovereign-identity credential types accepted. Present in the OpenAPI; not described in the manual."
+    },
+    "Signer.SignerV2DTO.Visible": {
+      "description": "Where the signature is drawn in the PDF."
+    },
+    "Signer.SignerV2DTO.Form": {
+      "description": "Form the signer fills in before signing (FormDisplay, Layout, Sections > Groups > Title / RadioButtons / CheckBoxes / TextBoxes / Attachments)."
+    },
+    "Signer.SignerV2DTO.AdditionalSignatures": {
+      "description": "Extra places in the PDF where the same signature is repeated."
+    },
+    "SignatureDataDTO.Visible": {
+      "description": "Where the signature of the matching signer is drawn in this PDF."
+    },
+    "SignatureDataDTO.Form": { "description": "Form of the matching signer for this PDF." },
+    "SignatureDataDTO.AdditionalSignatures": {
+      "description": "Extra places where the signature is repeated in this PDF."
+    },
+    "SendDocumentBatchDTO.SignaturesGroups": {
+      "description": "Signature placement per group and signer, in the same order as the signers of the batch.",
+      "required": true
+    },
+    "SignatureGroupDTO.Signatures": {
+      "description": "One entry per signer of the group, in the same order as the batch signers.",
+      "required": true
+    },
+
+    "VisibleDTO.Page": { "description": "Page of the signature. 0 = invisible, -1 = last page." },
+    "VisibleDTO.PosX": {
+      "description": "X position in millimetres (A4 is 210 x 297 mm; outside it the signature is relocated)."
+    },
+    "VisibleDTO.PosY": { "description": "Y position in millimetres." },
+    "VisibleDTO.SizeX": { "description": "Width in millimetres." },
+    "VisibleDTO.SizeY": { "description": "Height in millimetres." },
+    "VisibleDTO.SignatureField": {
+      "description": "Name of an existing AcroForm signature field; PosX/PosY/SizeX/SizeY are then ignored. Cannot be combined with Anchor."
+    },
+    "VisibleDTO.Anchor": {
+      "description": "Text in the PDF used as reference for the signature position; PosX/PosY are ignored and SizeX/SizeY are required. Cannot be combined with SignatureField."
+    },
+
+    "*.Reminder": {
+      "description": "Reminders by email for remote signers (SignatureType=emailandsms). They stop when the document is signed, rejected or deleted."
+    },
+    "*.Frequency": { "description": "Hours between reminders (1-99).", "min": 1, "max": 99 },
+    "*.MaxRetries": { "description": "Maximum number of reminders (1-10).", "min": 1, "max": 10 },
+    "*.NotificationEmailMessage": {
+      "description": "Custom subject and body of the notification email to the signer. Required for emailandsms signers unless SkipSignatureEmail=true; must be omitted/null when SkipSignatureEmail=true (API errors 12541/12544, verified in pre-production)."
+    },
+    "SignatureNotificationEmailDTO.eMailSubject": {
+      "description": "Subject of the email (max 255).",
+      "maxLength": 255
+    },
+    "SignatureNotificationEmailDTO.eMailBody": {
+      "description": "Custom message of the email (max 5000). Allowed HTML: p, br, b, i, img.",
+      "maxLength": 5000
+    },
+    "*.StampCertificate": { "description": "Stamp certificate to use (SignatureType=stamp)." },
+    "StampCertificateDTO.CertificateGUI": { "description": "Identifier of the stamp certificate." },
+    "StampCertificateDTO.Pin": {
+      "description": "PIN of the stamp certificate. A secret: provide it only when you must."
+    },
+    "*.CentralizedCertificate": {
+      "description": "Centralized certificate to use (SignatureType=mobile). If set, the user can only sign with this certificate."
+    },
+    "CentralizedCertificateDTO.CertificateGUID": {
+      "description": "Identifier of the centralized certificate. The manual samples spell it CertificateGUI; both are accepted."
+    },
+    "*.SignerData": {
+      "description": "Collects signer data (name, ID type, ID number) inside the signing flow when it is not known beforehand (remote and bio channels)."
+    },
+    "SignerDataDto.Display": {
+      "description": "When the signer-data form is shown: BeforePreview or AfterPreview (VIDremote only).",
+      "enum": ["BeforePreview", "AfterPreview"]
+    },
+    "SignerDataDto.SignerNameProperties": {
+      "description": "Whether the signer name is required and editable in the flow."
+    },
+    "SignerDataDto.NumberIdProperties": {
+      "description": "Whether the ID number is required and editable in the flow."
+    },
+    "SignerDataDto.TypeOfIdProperties": {
+      "description": "Whether the ID type is required and editable in the flow."
+    },
+    "SignerDataDto.TypeOfIdsAllowed": { "description": "List of allowed ID types." },
+    "SignerDataProperties.Editable": { "description": "The signer can edit the reported value." },
+    "SignerDataProperties.Required": {
+      "description": "mandatory, optional or no (for the signer name it must be mandatory).",
+      "enum": ["mandatory", "optional", "no"]
+    },
+    "*.Approvers": {
+      "description": "Approvers (centralized users, ordered list; OrderedSignatures must be true) that must approve before the signer can sign."
+    },
+    "ApproverDTO.LegalId": {
+      "description": "LegalId of a centralized user of the same subscription."
+    },
+    "ApproverDTO.SendApproverEmailNotification": {
+      "description": "Email the approver about the pending approval."
+    },
+    "ApproverDTO.IncludeInEvidences": {
+      "description": "Include the approver in the evidence report. Present in the OpenAPI."
+    },
+    "*.SignaturePolicy": {
+      "description": "Custom signing policy: PolicyIdentifier and PolicyCode (e.g. 2.16.724.1.3.1.1.2.1.9 and facturae)."
+    },
+    "SignaturePolicy.PolicyIdentifier": { "description": "Policy OID." },
+    "SignaturePolicy.PolicyCode": { "description": "Policy code." },
+    "*.Wallet": {
+      "description": "Allows a credential of the Wallet as second authentication factor (remote channel)."
+    },
+    "WalletDTO.Required": {
+      "description": "Whether wallet-based 2FA is allowed: no, optional or mandatory.",
+      "enum": ["no", "optional", "mandatory"]
+    },
+    "WalletDTO.Credentials": {
+      "description": "Credential type identifiers accepted, e.g. OpenId, EmailCredential."
+    },
+
+    "Forms.FormDTO.FormDisplay": {
+      "description": "When the form is shown. OnPreview is only available for the remote channel.",
+      "enum": ["BeforePreview", "AfterPreview", "OnPreview"]
+    },
+    "Forms.FormDTO.Layout": { "description": "Font and size of the form texts." },
+    "Forms.FormDTO.Sections": { "description": "Sections of the form; each one groups fields." },
+    "Forms.FormLayoutDTO.FontFamily": {
+      "description": "Font of the responses printed in the document: Courier, Courier-Bold, Courier-Oblique, Courier-BoldOblique, Helvetica, Helvetica-Bold, Helvetica-Oblique, Helvetica-BoldOblique, MacRoman, Times-Bold, Times-BoldItalic, Times-Italic or Times-Roman."
+    },
+    "Forms.FormLayoutDTO.FontSize": {
+      "description": "Font size of the form text, from 8 to 20 (as a string)."
+    },
+    "Forms.FormLayoutDTO.IsHTML": {
+      "description": "If true the titles accept HTML (br, b, i, u, p, span)."
+    },
+    "Forms.FormSectionDTO.Groups": { "description": "Groups of fields of the section." },
+    "Forms.FormGroupDTO.Title": { "description": "Header text of the group." },
+    "Forms.FormGroupDTO.RadioButtons": {
+      "description": "Radio buttons of the group; the user picks one choice."
+    },
+    "Forms.FormGroupDTO.CheckBoxes": { "description": "Check boxes of the group." },
+    "Forms.FormGroupDTO.TextBoxes": { "description": "Free text fields of the group." },
+    "Forms.FormGroupDTO.Attachments": { "description": "File/image upload fields of the group." },
+    "Forms.FormTitleDTO.Text": { "description": "Text (title or response)." },
+    "Forms.FormTitleDTO.Position": { "description": "Placement of the text in the PDF." },
+    "Forms.FormTitleDTO.DisablePrintPDF": { "description": "Do not print the text in the PDF." },
+    "Forms.FormPositionDTO.PosX": { "description": "X position in millimetres." },
+    "Forms.FormPositionDTO.PosY": { "description": "Y position in millimetres." },
+    "Forms.FormPositionDTO.SizeX": { "description": "Width in millimetres." },
+    "Forms.FormPositionDTO.Page": { "description": "Page of the PDF." },
+    "Forms.FormPositionDTO.Anchor": {
+      "description": "Text in the document where the element is placed."
+    },
+    "Forms.*.Id": { "description": "Unique field identifier." },
+    "Forms.*.Title": { "description": "Text and placement of the title of the field." },
+    "Forms.*.Condition": {
+      "description": "Enables the field only when another field (Id) has the value Result."
+    },
+    "Forms.FormConditionDTO.Id": { "description": "Identifier of the other field of the form." },
+    "Forms.FormConditionDTO.Result": {
+      "description": "Value that field must have to enable this one."
+    },
+    "Forms.*.Required": { "description": "Whether the answer is mandatory or optional." },
+    "Forms.*.HideBorders": { "description": "Hide the border printed in the document." },
+    "Forms.FormRadioButtonDTO.Choices": {
+      "description": "Options of the radio button; the user can pick only one."
+    },
+    "Forms.FormRadioButtonDTO.SelectedChoice": {
+      "description": "Index of the option chosen by default or by the user."
+    },
+    "Forms.FormRadioButtonChoiceDTO.Title": { "description": "Text and placement of the option." },
+    "Forms.FormCheckBoxDTO.Response": { "description": "Checked state of the check box." },
+    "Forms.FormCheckBoxDTO.Appearance": {
+      "description": "Printing style of the check box in the PDF: checkbox or radiobutton.",
+      "enum": ["checkbox", "radiobutton"]
+    },
+    "Forms.FormTextBoxDTO.MaxLines": {
+      "description": "Maximum number of lines the user can write (1-25).",
+      "min": 1,
+      "max": 25
+    },
+    "Forms.FormTextBoxDTO.MaxLength": {
+      "description": "Maximum number of characters of the response."
+    },
+    "Forms.FormTextBoxDTO.Optional": {
+      "description": "True if the text box is optional (OpenAPI field; prefer Required)."
+    },
+    "Forms.FormTextBoxDTO.Response": {
+      "description": "Response text (Text) and its placement (Position) in the PDF."
+    },
+    "Forms.FormAttachmentDTO.Response": {
+      "description": "Uploaded file and where it is placed in the PDF."
+    },
+    "Forms.FormAttachmentResponseDTO.FileInBase64": {
+      "description": "Uploaded file, Base64 encoded (OpenAPI spelling)."
+    },
+    "Forms.FormAttachmentResponseDTO.Text": {
+      "description": "Uploaded image, Base64 encoded (manual spelling of FileInBase64)."
+    },
+    "Forms.FormAttachmentResponseDTO.Position": {
+      "description": "Placement of the uploaded image in the PDF."
+    },
+    "Forms.FormAttachmentResponseDTO.Source": {
+      "description": "Origin of the uploaded file. Present in the OpenAPI."
+    },
+    "Forms.FormAttachmentResponseDTO.ContentType": {
+      "description": "File type that can be uploaded: IMG (JPEG, JPG, PNG) or PDF."
+    },
+    "Forms.FormAttachmentPositionDTO.PosX": { "description": "X position in millimetres." },
+    "Forms.FormAttachmentPositionDTO.PosY": { "description": "Y position in millimetres." },
+    "Forms.FormAttachmentPositionDTO.SizeX": { "description": "Width in millimetres." },
+    "Forms.FormAttachmentPositionDTO.SizeY": { "description": "Height in millimetres." },
+    "Forms.FormAttachmentPositionDTO.Page": { "description": "Page of the PDF." },
+    "Forms.FormAttachmentPositionDTO.Anchor": {
+      "description": "Text in the document where the image is placed."
+    },
+
+    "EDeliveries.EDeliveryDTO.RecipientEmailAddress": {
+      "description": "Recipient email (required). VIDSIGNER_ALLOWED_EMAIL_DOMAINS restricts the domains.",
+      "required": true
+    },
+    "EDeliveries.EDeliveryDTO.RecipientPhoneNumber": {
+      "description": "Recipient phone in E.164 format. Required unless AllowEmptyPhoneNumber. VIDSIGNER_ALLOWED_PHONE_PREFIXES restricts it."
+    },
+    "EDeliveries.EDeliveryDTO.AllowEmptyPhoneNumber": {
+      "description": "Allow sending without the recipient phone number."
+    },
+    "EDeliveries.EDeliveryDTO.NotificationEmails": {
+      "description": "Emails notified of the delivery events."
+    },
+    "EDeliveries.EDeliveryDTO.SendDocToRecipient": {
+      "description": "Also email a copy of the document to the recipient."
+    },
+    "EDeliveries.EDeliveryDTO.EDeliveryEmailMessage": {
+      "description": "Custom subject and body of the notification email."
+    },
+    "EDeliveries.EDeliveryDTO.Reminder": {
+      "description": "Reminders sent to the recipient while the e-delivery is pending."
+    },
+    "EDeliveries.EDeliveryEmailMessageDTO.Body": { "description": "Custom body of the email." },
+    "EDeliveries.EDeliveryEmailMessageDTO.Subject": {
+      "description": "Custom subject of the email."
+    }
+  }
+}

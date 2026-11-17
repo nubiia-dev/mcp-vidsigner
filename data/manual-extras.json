@@ -1,0 +1,91 @@
+{
+  "$comment": "Fields that the REST manual documents and the OpenAPI does not cover. They are merged with the API surface in scripts/gen-body-schemas.ts to generate the zod schemas of the tools (src/tools/generated/body-schemas.ts) and the client types (src/client/generated/manual-extras.ts). To add a field: edit it here and run `npm run gen:schemas -- --from-surface`. Alternative spellings (eMail, APP...) do NOT go here: they live in src/tools/aliases.ts.",
+  "version": "1.0.0",
+  "reviewedAt": "2026-11-16",
+  "source": "VIDsigner REST manual (sections 14.5, 14.20, 14.21 and 14.25) checked against the VIDsigner OpenAPI document",
+  "newSchemas": {
+    "RejectionOptionDTO": {
+      "$comment": "Rejection reason that the signer picks from a drop-down list (manual 14.5: RejectionOptions).",
+      "fields": {
+        "Id": { "type": "string", "manual": "14.5 RejectionOptions.Id" },
+        "Text": { "type": "string", "manual": "14.5 RejectionOptions.Text" }
+      }
+    }
+  },
+  "fields": [
+    {
+      "schemas": ["Signer.SignerV2DTO", "Signer.BatchSignerDTO"],
+      "field": "SkipSignatureEmail",
+      "type": "boolean",
+      "manual": "14.5 / 14.20 SignersGroups.Signers.SkipSignatureEmail"
+    },
+    {
+      "schemas": ["Signer.SignerV2DTO", "Signer.BatchSignerDTO"],
+      "field": "SendSignedDoc",
+      "type": "boolean",
+      "manual": "14.5 / 14.20 SignersGroups.Signers.SendSignedDoc"
+    },
+    {
+      "schemas": ["Signer.SignerV2DTO", "Signer.BatchSignerDTO"],
+      "field": "AllowEmptyPhoneNumber",
+      "type": "boolean",
+      "manual": "14.5 / 14.20 SignersGroups.Signers.AllowEmptyPhoneNumber"
+    },
+    {
+      "schemas": ["Signer.SignerV2DTO", "Signer.BatchSignerDTO"],
+      "field": "DownloadDocument",
+      "type": "boolean",
+      "manual": "14.5 / 14.20 SignersGroups.Signers.DownloadDocument"
+    },
+    {
+      "schemas": ["Signer.SignerV2DTO", "Signer.BatchSignerDTO"],
+      "field": "AllowSignatureDelegation",
+      "type": "boolean",
+      "manual": "14.5 / 14.20 SignersGroups.Signers.AllowSignatureDelegation"
+    },
+    {
+      "schemas": ["Signer.SignerV2DTO", "Signer.BatchSignerDTO"],
+      "field": "SendCentralizedSignerEmailNotification",
+      "type": "boolean",
+      "manual": "14.5 / 14.20 SignersGroups.Signers.SendCentralizedSignerEmailNotification"
+    },
+    {
+      "schemas": ["Signer.SignerV2DTO", "Signer.BatchSignerDTO"],
+      "field": "RejectionOptions",
+      "type": "array",
+      "items": { "$ref": "RejectionOptionDTO" },
+      "manual": "14.5 / 14.20 SignersGroups.Signers.RejectionOptions"
+    },
+    {
+      "schemas": ["Signer.SignerDataDto"],
+      "field": "Display",
+      "type": "string",
+      "manual": "14.5 SignersGroups.Signers.SignerData.Display"
+    },
+    {
+      "schemas": ["Forms.FormAttachmentResponseDTO"],
+      "field": "Text",
+      "type": "string",
+      "manual": "14.5 / 14.21 Form.Sections.Groups.Attachments.Response.Text (base64 image)"
+    },
+    {
+      "schemas": ["SendDocumentDTO"],
+      "field": "ConvertFormToReadOnly",
+      "type": "boolean",
+      "manual": "14.5 ConvertFormToReadOnly"
+    },
+    {
+      "schemas": ["SendDocumentDTO", "SendDocumentBatchDTO"],
+      "field": "RejectionOptions",
+      "type": "array",
+      "items": { "$ref": "RejectionOptionDTO" },
+      "manual": "14.5 / 14.21 RejectionOptions (document level)"
+    },
+    {
+      "schemas": ["SendDocumentBatchDTO"],
+      "field": "SendSignedDoc",
+      "type": "boolean",
+      "manual": "14.21 SendSignedDoc"
+    }
+  ]
+}
