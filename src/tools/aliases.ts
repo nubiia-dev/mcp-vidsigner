@@ -16,7 +16,8 @@ import type { z } from 'zod';
  *   `send: 'canonical'`: only the canonical one.
  * - If the model sends both with different values, the request is rejected.
  *
- * PENDING VERIFICATION in pre with a ClientID: every row has `status: 'pending'`. Once one is
+ * VERIFICATION in pre with a ClientID: rows start as `status: 'pending'`; only the signer's
+ * `Email`/`eMail` of `POST /documents` is verified so far (17/11/2026). Once one is
  * verified, change `status` to `'verified'`, set `send: 'canonical'` with the spelling the server
  * accepts and record the evidence in `evidence`. `scripts/gen-body-schemas.ts` takes the
  * spellings from here to add them to the generated schemas: after editing the table, run
@@ -60,7 +61,41 @@ export interface AliasRules {
   values?: ValueAlias[];
 }
 
-const SIGNER_ALIASES: AliasRules = {
+/** OTP channel spelling, shared by the signer of `POST /documents` and the batch signer. */
+const OTP_CHANNEL_ALIAS: ValueAlias = {
+  field: 'OTPChannel',
+  canonical: 'whatsapp',
+  aliases: ['WhatsApp'],
+  status: 'pending',
+  evidence:
+    'Manual 14.5 table lists "sms, WhatsApp, smswhatsapp"; the syntax example uses lowercase smsORwhatsappORsmswhatsapp. An enumeration value cannot be sent twice, so whatsapp is sent.',
+};
+
+/**
+ * Signer of `POST /documents`. `Email`/`eMail` verified in pre-production on 17/11/2026 with
+ * `POST /documents` and `SkipSignatureEmail=true` (three documents): `Email` alone, `eMail` and
+ * `Email` with the same value, and both with different values all answer 200. With different
+ * values the LAST key of the JSON wins (documentinfo returned the value of `eMail`): the binder
+ * of VIDsigner is case-insensitive and keeps the last occurrence. That is why this client rejects
+ * two different values instead of leaving the outcome to the key order. Only `Email` is
+ * sent, as the table requires for a verified decision.
+ */
+const SIGNER_V2_ALIASES: AliasRules = {
+  keys: [
+    {
+      canonical: 'Email',
+      alias: 'eMail',
+      send: 'canonical',
+      status: 'verified',
+      evidence:
+        'OpenAPI SignerV2DTO: Email. Manual 14.5 (syntax and table): eMail; manual 14.14 and the 14.x documentinfo sections: Email. Verified in pre on 17/11/2026 with POST /documents: both spellings are accepted (case-insensitive binder) and, if the values differ, the last key of the JSON wins; the response of documentinfo uses Email.',
+    },
+  ],
+  values: [OTP_CHANNEL_ALIAS],
+};
+
+/** Signer of `POST /documentbatch` (the `Email`/`eMail` decision is NOT verified for this endpoint). */
+const BATCH_SIGNER_ALIASES: AliasRules = {
   keys: [
     {
       canonical: 'Email',
@@ -68,24 +103,15 @@ const SIGNER_ALIASES: AliasRules = {
       send: 'both',
       status: 'pending',
       evidence:
-        'OpenAPI SignerV2DTO/BatchSignerDTO: Email. Manual 14.5 and 14.20 (syntax and table): eMail; manual 14.14 and the 14.x documentinfo sections: Email. Real doubt, so both are sent.',
+        'OpenAPI BatchSignerDTO: Email. Manual 14.20 (syntax and table): eMail. Verified only for POST /documents (SignerV2DTO), not for POST /documentbatch. Real doubt, so both are sent.',
     },
   ],
-  values: [
-    {
-      field: 'OTPChannel',
-      canonical: 'whatsapp',
-      aliases: ['WhatsApp'],
-      status: 'pending',
-      evidence:
-        'Manual 14.5 table lists "sms, WhatsApp, smswhatsapp"; the syntax example uses lowercase smsORwhatsappORsmswhatsapp. An enumeration value cannot be sent twice, so whatsapp is sent.',
-    },
-  ],
+  values: [OTP_CHANNEL_ALIAS],
 };
 
 export const ALIASES: Record<string, AliasRules> = {
-  'Signer.SignerV2DTO': SIGNER_ALIASES,
-  'Signer.BatchSignerDTO': SIGNER_ALIASES,
+  'Signer.SignerV2DTO': SIGNER_V2_ALIASES,
+  'Signer.BatchSignerDTO': BATCH_SIGNER_ALIASES,
   DocumentRecipientDTO: {
     keys: [
       {

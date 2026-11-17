@@ -66,6 +66,33 @@ describe('schema generator: the generated files are up to date', () => {
   });
 });
 
+describe('signer Email/eMail decision (verified in pre with POST /documents, 17/11/2026)', () => {
+  const emailRow = (schema: string) =>
+    allAliasRows().find(
+      (r) => r.schema === schema && r.kind === 'key' && r['canonical'] === 'Email',
+    );
+
+  it('is verified and sends only Email for the signer of POST /documents', () => {
+    expect(emailRow('Signer.SignerV2DTO')).toMatchObject({ status: 'verified', send: 'canonical' });
+  });
+
+  it('stays pending for the batch signer, the recipients and the other spellings', () => {
+    expect(emailRow('Signer.BatchSignerDTO')?.['status']).toBe('pending');
+    expect(emailRow('DocumentRecipientDTO')?.['status']).toBe('pending');
+    const pending = allAliasRows()
+      .filter((r) => r['status'] === 'pending')
+      .map((r) => `${r.schema}:${String(r['canonical'])}`);
+    expect(pending).toEqual(
+      expect.arrayContaining([
+        'DocAppearanceDTO:App',
+        'CentralizedCertificateDTO:CertificateGUID',
+        'Signer.SignerV2DTO:whatsapp',
+        'DocumentRecipientDTO:Email',
+      ]),
+    );
+  });
+});
+
 describe('typo suggestions', () => {
   it('distance and closest spelling', () => {
     expect(distance('Emial', 'Email')).toBe(2);
@@ -155,7 +182,7 @@ describe('strict schemas in the tools (through the MCP protocol)', () => {
     });
   });
 
-  it('manual aliases are accepted, normalised, and both spellings are sent when in doubt', async () => {
+  it('manual aliases are accepted, normalised, and both spellings are sent only where the doubt remains', async () => {
     const { send, path, wire } = await setup();
     const r = await send('vidsigner_create_document', {
       filePath: path,
@@ -182,11 +209,9 @@ describe('strict schemas in the tools (through the MCP protocol)', () => {
       Appearance: Record<string, unknown>;
     };
     const s = body.SignersGroups[0]?.Signers[0] as Record<string, unknown>;
-    expect(s).toMatchObject({
-      Email: 'a@example.com',
-      eMail: 'a@example.com',
-      OTPChannel: 'whatsapp',
-    });
+    // Signer Email/eMail verified in pre (17/11/2026): only the canonical spelling is sent.
+    expect(s).toMatchObject({ Email: 'a@example.com', OTPChannel: 'whatsapp' });
+    expect(s).not.toHaveProperty('eMail');
     expect(s['CentralizedCertificate']).toEqual({
       CertificateGUI: 'cert-1',
       CertificateGUID: 'cert-1',
