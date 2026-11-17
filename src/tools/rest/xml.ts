@@ -16,7 +16,8 @@ const signXml = defineTool({
   docSummary:
     'Signs an XML (Facturae e-invoice) with an automatic stamp certificate of the subscription and saves the signed XML to disk.',
   notes: [
-    'The subscription needs the STAMP_XML channel.',
+    'The subscription needs the STAMP_XML channel (otherwise 409/51121 "Unsupported signature type: STAMP_XML"; the demo subscription of pre-production does not have it).',
+    'The API recognizes the Facturae version by the XML namespace: the Facturae 3.2.2 one, ending in Facturaev3_2_2.xml (no underscore between "Factura" and "e"), is recognized (verified in pre-production); a document it cannot classify answers 400/50403 "Xml document type not supported. Allowed: 3.2,3.2.1,3.2.2".',
     'The certificate PIN travels in the request: provide it only when needed.',
     'Accepts filePath or contentBase64.',
   ],

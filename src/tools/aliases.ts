@@ -16,10 +16,12 @@ import type { z } from 'zod';
  *   `send: 'canonical'`: only the canonical one.
  * - If the model sends both with different values, the request is rejected.
  *
- * VERIFICATION in pre with a ClientID: rows start as `status: 'pending'`; only the signer's
- * `Email`/`eMail` of `POST /documents` is verified so far (17/11/2026). Once one is
- * verified, change `status` to `'verified'`, set `send: 'canonical'` with the spelling the server
- * accepts and record the evidence in `evidence`. `scripts/gen-body-schemas.ts` takes the
+ * VERIFICATION in pre with a ClientID: rows start as `status: 'pending'`. The signer's
+ * `Email`/`eMail` of `POST /documents` is `verified` (17/11/2026); the batch signer's `Email`/`eMail`,
+ * `App`/`APP`, `CertificateGUID`/`CertificateGUI` and `whatsapp`/`WhatsApp` are `accepted` (an E2E run
+ * of the 17/11/2026 got 200 with them; which spelling the server reads when they differ is not
+ * determined). Once one is verified, change `status` to `'verified'`, set `send: 'canonical'` with
+ * the spelling the server reads and record the evidence in `evidence`. `scripts/gen-body-schemas.ts` takes the
  * spellings from here to add them to the generated schemas: after editing the table, run
  * `npm run gen:schemas`.
  *
@@ -29,8 +31,16 @@ import type { z } from 'zod';
 /** How the two spellings of a field are sent. */
 export type AliasSend = 'canonical' | 'both';
 
-/** Verification status of a decision. */
-export type AliasStatus = 'pending' | 'verified';
+/**
+ * Verification status of a decision:
+ *
+ * - `pending`: not exercised against the API.
+ * - `accepted`: the API ACCEPTS both spellings (a real `POST` answered 200 in pre-production, 17/11/2026),
+ *   but which of the two it READS when they differ is not determined, so both are still sent with
+ *   the same value. The tools never send two different values.
+ * - `verified`: the accepted spelling is known (and only it is sent).
+ */
+export type AliasStatus = 'pending' | 'accepted' | 'verified';
 
 /** A field with two spellings (`canonical` is the one the typed client uses). */
 export interface KeyAlias {
@@ -66,9 +76,9 @@ const OTP_CHANNEL_ALIAS: ValueAlias = {
   field: 'OTPChannel',
   canonical: 'whatsapp',
   aliases: ['WhatsApp'],
-  status: 'pending',
+  status: 'accepted',
   evidence:
-    'Manual 14.5 table lists "sms, WhatsApp, smswhatsapp"; the syntax example uses lowercase smsORwhatsappORsmswhatsapp. An enumeration value cannot be sent twice, so whatsapp is sent.',
+    'Manual 14.5 table lists "sms, WhatsApp, smswhatsapp"; the syntax example uses lowercase smsORwhatsappORsmswhatsapp. An enumeration value cannot be sent twice, so whatsapp is sent. E2E 17/11/2026 (pre): whatsapp, smswhatsapp and WhatsApp (normalized to whatsapp) were all accepted with 200; what the API does with each could not be observed (get_document_info does not return OTPChannel and pre does not deliver WhatsApp).',
 };
 
 /**
@@ -101,9 +111,9 @@ const BATCH_SIGNER_ALIASES: AliasRules = {
       canonical: 'Email',
       alias: 'eMail',
       send: 'both',
-      status: 'pending',
+      status: 'accepted',
       evidence:
-        'OpenAPI BatchSignerDTO: Email. Manual 14.20 (syntax and table): eMail. Verified only for POST /documents (SignerV2DTO), not for POST /documentbatch. Real doubt, so both are sent.',
+        'OpenAPI BatchSignerDTO: Email. Manual 14.20 (syntax and table): eMail. E2E 17/11/2026 (pre): a batch created with the eMail spelling (both sent with the same value) answers 200 and closes without error; the signer of POST /documents is verified, and the same case-insensitive binder is presumed here but not isolated. Both are still sent.',
     },
   ],
   values: [OTP_CHANNEL_ALIAS],
@@ -131,9 +141,9 @@ export const ALIASES: Record<string, AliasRules> = {
         canonical: 'App',
         alias: 'APP',
         send: 'both',
-        status: 'pending',
+        status: 'accepted',
         evidence:
-          'OpenAPI DocAppearanceDTO: App. Manual 14.5 and 14.20 (syntax and table): APP. Real doubt, so both are sent.',
+          'OpenAPI DocAppearanceDTO: App. Manual 14.5 and 14.20 (syntax and table): APP. E2E 17/11/2026 (pre): both spellings (App and APP, normalized and sent together) answer 200 with Appearance.App.Logo, and without Logo the API answers 400/12200, which shows it reads the object. Which spelling it reads is not isolated (they differ only in case); both are still sent.',
       },
     ],
   },
@@ -143,9 +153,9 @@ export const ALIASES: Record<string, AliasRules> = {
         canonical: 'CertificateGUID',
         alias: 'CertificateGUI',
         send: 'both',
-        status: 'pending',
+        status: 'accepted',
         evidence:
-          'OpenAPI CentralizedCertificateDTO and the manual 14.5 table: CertificateGUID. Syntax examples in manual 14.5 and 14.20: CertificateGUI. Real doubt, so both are sent.',
+          'OpenAPI CentralizedCertificateDTO and the manual 14.5 table: CertificateGUID. Syntax examples in manual 14.5 and 14.20: CertificateGUI. E2E 17/11/2026 (pre): both answer 200 and an unknown GUID answers 400/90000 "certificate not found", so the API reads at least one of the two; the names differ by a letter, so which one is NOT determined. Both are still sent.',
       },
     ],
   },

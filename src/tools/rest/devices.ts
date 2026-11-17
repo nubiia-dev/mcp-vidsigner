@@ -33,9 +33,12 @@ const listEnrollmentCodeDevices = defineTool({
   endpoint: 'GET /enrollmentcodes/{id}/devices',
   whenToUse: 'you need the devices enrolled with one enrollment code.',
   docSummary: 'Lists the devices enrolled with a specific enrollment code.',
-  notes: ['Only in the OpenAPI.'],
+  notes: [
+    'Only in the OpenAPI.',
+    'Passing the enrollment code TEXT (e.g. "enrollxxxx") answered 403/20301 "has no access to EnrollmentCode" in pre-production: the id probably has to be the GUID of the enrollment code, which only the management API (partner credentials) returns. Not verified with a GUID.',
+  ],
   description:
-    'Lists the devices enrolled with a given enrollment code (GET /enrollmentcodes/{id}/devices). Only in the OpenAPI.',
+    'Lists the devices enrolled with a given enrollment code (GET /enrollmentcodes/{id}/devices). Only in the OpenAPI. Called with the enrollment code text it answered 403/20301 in pre-production; the id is probably the GUID of the code (from the management API, partner credentials), not verified.',
   inputSchema: { enrollmentCodeId: id('Enrollment code identifier.') },
   handler: async ({ enrollmentCodeId }, { rest }) => {
     const items = await rest.listEnrollmentCodeDevices(enrollmentCodeId);

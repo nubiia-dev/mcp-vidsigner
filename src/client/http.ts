@@ -35,8 +35,15 @@ export type RetryPolicy = 'safe' | 'never';
  * - `codes-or-empty-body`: the above, or a 404 without a code that has an empty body, "list is empty"
  *   or a bare "Elements not found". This is what `GET /signeddocuments` and the management API return
  *   for an empty collection. A 404 with descriptive text ("Element not found...", "not exist") is an error.
+ * - `codes-or-empty-body-or-no-certs`: the previous rule plus one extra case, only for
+ *   `GET /vidmobileusers/{legalid}/certs`: the user EXISTS but has no certificates and the API answers
+ *   404 "Element not found.No certs for vidmobile user ..." (verified in pre-production). The 404 of a user
+ *   that does not exist ("No vidmobile user with legalid ...") stays an error, and so does any other text.
  */
-export type EmptyListRule = 'codes' | 'codes-or-empty-body';
+export type EmptyListRule = 'codes' | 'codes-or-empty-body' | 'codes-or-empty-body-or-no-certs';
+
+/** Exact text of the "user exists but has no certificates" 404 (a missing user says "No vidmobile user with legalid"). */
+const NO_CERTS_404 = /^element not found\.\s*no certs for vidmobile user\b/i;
 
 /** Description of an HTTP request to the service. */
 export interface RequestSpec {
@@ -218,7 +225,13 @@ export class HttpTransport {
         this.logger.warn('404 without code normalized to empty list', {
           op: spec.operation,
           status: 404,
-          reason: parsed.message.trim() === '' ? 'empty body' : 'empty-list message',
+          reason:
+            parsed.message.trim() === ''
+              ? 'empty body'
+              : spec.emptyListOn404 === 'codes-or-empty-body-or-no-certs' &&
+                  /no certs/i.test(parsed.message)
+                ? 'user without certificates'
+                : 'empty-list message',
         });
       }
       return [] as unknown as T;
@@ -286,7 +299,11 @@ export function isEmptyList(
     (message === '' ||
       (/\blist is empty\b/i.test(message) && !/not (found|exist)/i.test(message)) ||
       /^elements? not found\.?$/i.test(message));
-  return byCode || emptyBody;
+  const noCerts =
+    rule === 'codes-or-empty-body-or-no-certs' &&
+    parsed.code === undefined &&
+    NO_CERTS_404.test(message);
+  return byCode || emptyBody || noCerts;
 }
 
 function parseSuccess<T>(text: string): T | undefined {

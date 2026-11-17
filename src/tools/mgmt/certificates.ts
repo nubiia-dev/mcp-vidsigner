@@ -14,8 +14,11 @@ const listUserCerts = defineTool({
   endpoint: 'GET /vidmobileusers/{legalid}/certs',
   whenToUse: 'you need the certificates of a VIDmobile user (alias, type, DN, expiration).',
   docSummary:
-    'Lists the certificates of a VIDmobile user: alias, type (Software, KeyVault, FirmaRemota), DN and expiration.',
-  description: `Lists the certificates of a VIDmobile user: alias, type (Software, KeyVault, FirmaRemota), DN, expiration (MGMT API). ${BASIC_NOTE}`,
+    'Lists the certificates of a VIDmobile user: alias, type (Software, KeyVault, FirmaRemota), DN and expiration. A user without certificates returns an empty list.',
+  notes: [
+    'A user that exists but has no certificates answers 404 "Element not found.No certs for vidmobile user ..."; the client turns exactly that case into an empty list (verified in pre-production). The 404 of a user that does not exist ("No vidmobile user with legalid ...") is still an error.',
+  ],
+  description: `Lists the certificates of a VIDmobile user: alias, type (Software, KeyVault, FirmaRemota), DN, expiration (MGMT API). A user that exists but has no certificates returns an empty list (the API answers a 404 "No certs for vidmobile user" for it, which the client normalizes); a user that does not exist is still an error. ${BASIC_NOTE}`,
   inputSchema: { legalId: legalIdParam },
   handler: async ({ legalId }, ctx) => {
     const items = await requireMgmt(ctx).listVidMobileUserCertificates(legalId);
@@ -32,21 +35,31 @@ const addUserCert = defineTool({
   endpoint: 'POST /vidmobileusers/{legalid}/certs',
   whenToUse: 'a PKCS#12 certificate must be uploaded to a VIDmobile user.',
   docSummary: 'Uploads a PKCS#12 certificate (.p12 or .pfx) to a VIDmobile user.',
-  notes: ['The PIN travels in the arguments of the call.', 'Accepts filePath or contentBase64.'],
+  notes: [
+    'The PIN travels in the arguments of the call.',
+    'Accepts filePath or contentBase64.',
+    'certtype "Software" is deprecated: the API rejects it with 400 "Certificate type \'Software\' is deprecated. Use KeyVault" (verified in pre-production). Only KeyVault is offered; if you omit it nothing is sent and the API decides.',
+    'The certificate must come from a chain the API recognizes: a self-signed .pfx is rejected with 400 "Certificate is not from a recognized chain" (and a file that is not a PKCS#12, with 400 "Bad certificate"). A successful upload has not been verified in pre-production for lack of such a certificate.',
+  ],
   example: {
     legalId: '12345678Z',
     filePath: '/Users/me/vidsigner-mcp/in/certificate.p12',
     certalias: 'Jane Doe certificate',
     pin: '1234',
-    certtype: 'Software',
+    certtype: 'KeyVault',
   },
-  description: `Uploads a PKCS#12 (.p12/.pfx) certificate to a VIDmobile user (MGMT API). ${BASIC_NOTE} The PIN travels in the arguments of this call. Accepts a local file or base64.`,
+  description: `Uploads a PKCS#12 (.p12/.pfx) certificate to a VIDmobile user (MGMT API). ${BASIC_NOTE} The PIN travels in the arguments of this call. Accepts a local file or base64. certtype Software is deprecated and rejected by the API (400): use KeyVault or omit it. The certificate must belong to a chain the API recognizes (a self-signed one answers 400 "not from a recognized chain").`,
   inputSchema: {
     legalId: legalIdParam,
     ...fileInputShape,
     certalias: z.string().describe('Certificate alias.'),
     pin: z.string().describe('PIN of the private key.'),
-    certtype: z.enum(['Software', 'KeyVault']).optional().describe('Default Software.'),
+    certtype: z
+      .enum(['KeyVault'])
+      .optional()
+      .describe(
+        'Certificate type. Only KeyVault: "Software" is deprecated and the API rejects it (400). Omit to send nothing.',
+      ),
     dynamicpin: z.boolean().optional().describe('KeyVault only: send an OTP to the user mobile.'),
   },
   handler: async ({ legalId, filePath, contentBase64, ...cert }, ctx) => {
@@ -86,11 +99,19 @@ const setCertTypes = defineTool({
   whenToUse:
     'you must choose which certificate types (software, key vault, remote signature) a VIDmobile user may use.',
   docSummary: 'Chooses the certificate types a VIDmobile user may use.',
-  example: { legalId: '12345678Z', Software: true, KeyVault: false, FirmaRemota: false },
-  description: `Chooses which certificate types the VIDmobile user may use (MGMT API). ${BASIC_NOTE}`,
+  notes: [
+    'Software is DEPRECATED: Software=true is rejected with 400 "Software certtype is deprecated. Use KeyVault instead" (verified in pre-production). It is optional: send KeyVault and/or FirmaRemota.',
+  ],
+  example: { legalId: '12345678Z', KeyVault: true, FirmaRemota: false },
+  description: `Chooses which certificate types the VIDmobile user may use (MGMT API). Software is deprecated and optional: Software=true is rejected by the API (400 "Use KeyVault instead"), so send KeyVault and/or FirmaRemota. ${BASIC_NOTE}`,
   inputSchema: {
     legalId: legalIdParam,
-    Software: z.boolean().describe('Allow software certificates (.p12 uploaded to VIDsigner).'),
+    Software: z
+      .boolean()
+      .optional()
+      .describe(
+        'DEPRECATED, optional: true is rejected by the API (400 "Software certtype is deprecated. Use KeyVault instead"). Omit it.',
+      ),
     KeyVault: z.boolean().describe('Allow key-vault certificates.'),
     FirmaRemota: z.boolean().describe('Allow remote-signature (qualified remote) certificates.'),
   },

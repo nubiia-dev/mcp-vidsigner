@@ -197,9 +197,22 @@ describe('verified rules of the API in the descriptions (pre-production, 17/11/2
       expect(notes(name), name).toMatch(/12541/);
       expect(notes(name), name).toMatch(/12544/);
     }
+    // The rule was verified for the batch endpoint too (17/11/2026): the description must say so.
     expect(desc('vidsigner_create_batch')).toMatch(
-      /verified in pre-production for POST \/documents/,
+      /verified in pre-production for POST \/documentbatch and POST \/documents/,
     );
+    expect(desc('vidsigner_create_batch')).not.toMatch(/not yet for the batch/);
+    expect(notes('vidsigner_create_batch')).not.toMatch(/assumed, not verified/);
+    expect(notes('vidsigner_add_document_to_batch')).not.toMatch(
+      /verified for POST \/documents only/,
+    );
+  });
+
+  it('batch tools state the same-NotificationURL rule (12205)', () => {
+    for (const name of ['vidsigner_create_batch', 'vidsigner_add_document_to_batch']) {
+      expect(desc(name), name).toMatch(/12205/);
+    }
+    expect(notes('vidsigner_add_document_to_batch')).toMatch(/IDENTICAL in every document/);
   });
 
   it('NotificationEmailMessage documents the rule in the schema of the three tools', () => {
@@ -222,7 +235,7 @@ describe('verified rules of the API in the descriptions (pre-production, 17/11/2
 
   it('no tool claims to be free of side effects: reads are recorded in the document log', () => {
     for (const t of listed) expect(t.description, t.name).not.toMatch(/without side effects/i);
-    expect(desc('vidsigner_get_document')).toMatch(/does not change the Downloaded flag/);
+    expect(desc('vidsigner_get_document')).toMatch(/on a SIGNED document, it DOES/);
     expect(desc('vidsigner_get_document_log')).toMatch(/IP of the client/);
     expect(desc('vidsigner_send_signature_url')).toMatch(/SkipSignatureEmail=true/);
   });

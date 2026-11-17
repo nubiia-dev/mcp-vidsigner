@@ -162,7 +162,7 @@ describe('MGMT: requests and responses', () => {
     expect(sub.SubscriptionGUID).toBe('g1');
   });
 
-  it('routes: singular/plural, status and enrollment codes as in the manual', async () => {
+  it('routes: singular/plural (verified in pre), status and enrollment codes', async () => {
     const m = jwt(() => json(200, {}));
     const c = client(m.fetch);
     await c.getSubscription('s1');
@@ -175,7 +175,7 @@ describe('MGMT: requests and responses', () => {
       .filter((x) => !x.url.endsWith('/oauth/token'))
       .map((x) => `${x.method} ${new URL(x.url).pathname}`);
     expect(seen).toEqual([
-      'GET /api/subscriptions/s1',
+      'GET /api/subscription/s1',
       'PUT /api/subscription/s1/status/active',
       'POST /api/subscription/s1/enrollmentcode',
       'PUT /api/enrollmentcodes/e1',

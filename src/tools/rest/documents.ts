@@ -29,7 +29,10 @@ const createDocument = defineTool({
     'For a signing link without email: SkipSignatureEmail=true on the signer (the subscription needs AllowSkipEmail, otherwise 409/40111) and then vidsigner_get_signature_url.',
     'NotificationEmailMessage is required for every emailandsms signer unless SkipSignatureEmail=true, and must be omitted (null) when SkipSignatureEmail=true. Otherwise the API answers 400/12541 ("NotificationEmailMessage cannot be null for Signer") or 400/12544 ("NotificationEmailMessage must be null if SkipSignatureEmail is true"). Verified in pre-production on 17/11/2026; the client does not enforce it.',
     'The signer email accepts null, empty or "null"; all other emails (recipients, notifications) are mandatory and validated.',
-    'The signer Email/eMail spellings are both accepted (verified in pre-production: if the values differ, the last key wins, so the tool rejects different values). The other alternative spellings (APP/App, CertificateGUI/CertificateGUID...) are still pending verification.',
+    'The signer Email/eMail spellings are both accepted (verified in pre-production: if the values differ, the last key wins, so the tool rejects different values). APP/App, CertificateGUI/CertificateGUID and WhatsApp/whatsapp are also ACCEPTED by the API (verified in pre-production); which spelling it reads when the values differ is not determined (the tools never send different values).',
+    'Appearance: Appearance.App needs Logo (a URL the API downloads) AND all four colours (PrimaryColor, PrimaryTextColor, SecondaryColor, SecondaryTextColor): without Logo the API answers 400/12200 "Logo URL cannot be null or empty", and each missing colour 400/15600 "PrimaryTextColor cannot be null or empty". Appearance.EmailNotification needs CorporateLogo and a CorporateLogoWidth greater than 0 (otherwise 400/12305 "The image width is not valid value. Value: 0"). Verified in pre-production.',
+    'NotificationURL: the API stores it with a trailing "/" added (a value sent as https://host/path is read back by get_document_info as https://host/path/). Verified in pre-production.',
+    'get_document_info does not echo Reminder, OTPChannel, Appearance or the centralized certificate: they are accepted on creation but cannot be read back, so you cannot confirm them afterwards (verified in pre-production).',
     'Accepts the PDF via filePath (inside VIDSIGNER_ALLOWED_INPUT_DIRS) or contentBase64; exactly one.',
   ],
   example: {
@@ -89,21 +92,23 @@ const getDocument = defineTool({
   title: 'Download document (any status)',
   domain: 'documents',
   api: 'rest',
-  risk: 'read',
+  risk: 'mark_downloaded',
   endpoint: 'GET /documents/{id}',
   whenToUse:
-    'you need the PDF of a document in any status (unsigned, signed or rejected), including a signed one, without changing its Downloaded flag.',
+    'you need the PDF of a document in any status (unsigned, signed or rejected) and accept that, on a SIGNED document, the call marks it as downloaded.',
   docSummary:
-    'Downloads the PDF of a document in any status and saves it to disk. Unlike vidsigner_download_signed_document, it does not mark the document as downloaded.',
+    'Downloads the PDF of a document in any status and saves it to disk. On a SIGNED document it MARKS IT AS DOWNLOADED (verified in pre-production), exactly like vidsigner_download_signed_document, contrary to what the manual says; on an unsigned document it does not change the flag.',
   notes: [
     'Returns the file path, never the base64 content.',
-    'It does not change the Downloaded flag (the call is recorded in the document log), so it is the safe way to read a signed PDF on a subscription shared with another system.',
+    'SIDE EFFECT verified in pre-production (17/11/2026, a document signed through VIDremote): GET /documents/{id} on a SIGNED document sets Downloaded=true and removes it from the signed-not-downloaded queue (vidsigner_list_signed_documents), although manual 14.18 says it does not. Other integrations of the same subscription that consume that queue will no longer see the document. That is why this tool needs VIDSIGNER_ALLOW_MARK_DOWNLOADED=true, like vidsigner_download_signed_document.',
+    'On an unsigned or rejected document it does not change the Downloaded flag (verified). The call is recorded in the document log ("Downloaded document. Current Status = ...").',
+    'There is NO side-effect-free way to read the PDF of a signed document through this API; vidsigner_get_document_report (the evidence report) and vidsigner_get_document_info do not mark it.',
   ],
   example: { docGuid: '0b6f1d0e-1c2a-4c55-9d8e-3a1f5b7c9e21' },
   description: [
     'Downloads the PDF of a document in ANY status (unsigned, signed or rejected) and saves it to disk (GET /documents/{id}).',
     'Returns the saved path, never the base64 content.',
-    'Per the manual (14.18) this does NOT mark the document as downloaded, unlike vidsigner_download_signed_document: it does not change the Downloaded flag, so it is the safe way to read a signed PDF on a shared subscription. The call is still recorded in the document log ("Downloaded document. Current Status = ..."), which is visible with vidsigner_get_document_log.',
+    'WARNING: the manual (14.18) says this does NOT mark the document as downloaded, but in pre-production, on a SIGNED document, it DOES: Downloaded becomes true and the document leaves the signed-not-downloaded queue, like vidsigner_download_signed_document (on unsigned or rejected documents the flag does not change). It therefore needs VIDSIGNER_ALLOW_MARK_DOWNLOADED=true. The call is recorded in the document log ("Downloaded document. Current Status = ...").',
   ].join(' '),
   inputSchema: { docGuid, outputFileName },
   handler: async ({ docGuid, outputFileName }, { rest, files }) => {
@@ -182,11 +187,14 @@ const expireDocument = defineTool({
     'Marks an unsigned document as expired so nobody can sign it any more. The record is kept.',
   notes: [
     'It is irreversible.',
-    'The evidence report of an expired document is available 30 days after expiration.',
+    'The document does NOT move to an "Expired" status: get_document_info keeps reporting DocStatus Unsigned, and what changes is ExpirationTime, which is brought forward to the moment of the call (verified in pre-production).',
+    'The evidence report (vidsigner_get_document_report) is available straight away on the expired document; the manual says it stays available 30 days.',
+    'Expiring again an already expired document answers 409 (code 0, "DocStatus: Unsigned is not valid for updating").',
+    'vidsigner_get_signature_url still returns a URL for an expired document (not opened, so whether it still lets someone sign is unverified): treat the document as closed and do not hand out its links.',
   ],
   example: { docGuid: '0b6f1d0e-1c2a-4c55-9d8e-3a1f5b7c9e21' },
   description:
-    'Marks an unsigned document as expired so nobody can sign it any more (PUT /documents/{docGuid}/expire). Irreversible.',
+    'Marks an unsigned document as expired so nobody can sign it any more (PUT /documents/{docGuid}/expire). Irreversible. Observed in pre-production: the document does not get an "Expired" status (get_document_info still shows Unsigned; only ExpirationTime moves to the time of the call) and vidsigner_get_signature_url keeps returning a URL for it (not opened, usability unverified). The evidence report is available immediately.',
   inputSchema: { docGuid },
   handler: async ({ docGuid }, { rest }) => {
     await rest.expireDocument(docGuid);
@@ -241,6 +249,10 @@ const getDocumentInfo = defineTool({
   notes: [
     'Contains personal data of the signers.',
     'Groups are always returned under SignerGroups even if the server spells it SignersGroups, as in the manual.',
+    'It does NOT return what was sent as Reminder, OTPChannel or Appearance, nor the centralized certificate (CertificateGUID) of a mobile signature: they cannot be read back (verified in pre-production).',
+    'DocStatus of an expired document stays Unsigned; there is no Expired status (see vidsigner_expire_document).',
+    'Verified on documents signed and rejected through VIDremote (17/11/2026): DocStatus is Signed or Rejected, the signer carries SignatureStatus and, when rejected, RejectionReason (the text the signer typed). Evidence types seen: SIGNATUREURL_RETRIEVED, EMAIL_CLICKED, OTP_SENT, OTP_VERIFIED, DOC_SIGNED, DOC_REJECTED, EMAIL_SENT, EMAIL_RESENT, REMINDER_SENT; each evidence is an object with EvidenceType and EvidenceDate.',
+    'NotificationURL is read back with a trailing "/" added by the API.',
   ],
   example: { docGuid: '0b6f1d0e-1c2a-4c55-9d8e-3a1f5b7c9e21' },
   description:
@@ -263,7 +275,7 @@ const listDocuments = defineTool({
     'Lists the documents of the subscription filtered by status, paginated or walking every page with fetchAll.',
   notes: [
     'pageNumber starts at 1 and pageSize must be between 1 and 99: with 100 or more the API answers 400.',
-    'searchText has 3 to 10 characters.',
+    'searchText has 3 to 10 characters. Verified in pre-production: it matches by SUBSTRING and ignoring case against the file name (FileName) and AdditionalData; it does NOT search the signer name nor the Tag.',
     'orderBy accepts FileName, DocStatus, Downloaded, AdditionalData and UploadTime; DocGUI gives 400/10500 (verified in pre-production).',
     'orderType: asc, des or desc; the server only understands asc and des, so desc is sent as des (verified in pre-production).',
     'fetchAll=true walks all pages up to maxPages; if the cap is reached it returns truncated=true and the list is INCOMPLETE.',
@@ -279,7 +291,7 @@ const listDocuments = defineTool({
   description: [
     'Lists the documents of the subscription filtered by status (GET /documentlist/{filter}): all, unsigned, signed, rejected, signeddownloaded or signednotdownloaded.',
     'Pagination: pageNumber starts at 1 and pageSize must be between 1 and 99 (the API answers 400 otherwise). An empty list is returned as an empty array (the API uses 404/50002).',
-    'searchText must have 3-10 characters. orderBy accepts FileName, DocStatus, Downloaded, AdditionalData or UploadTime (verified in pre-production; the server also advertises DocGUI but answers 400/10500 to it). orderType: asc, des or desc (the server only understands asc and des, verified in pre-production: desc is accepted here and sent as des).',
+    'searchText must have 3-10 characters and matches by substring, ignoring case, in the file name and in AdditionalData (verified in pre-production; not in the signer name or the Tag). orderBy accepts FileName, DocStatus, Downloaded, AdditionalData or UploadTime (verified in pre-production; the server also advertises DocGUI but answers 400/10500 to it). orderType: asc, des or desc (the server only understands asc and des, verified in pre-production: desc is accepted here and sent as des).',
     'Set fetchAll=true to walk every page (bounded by maxPages). If the cap is reached the answer has truncated=true and the list is INCOMPLETE: raise maxPages or narrow the filter.',
   ].join(' '),
   inputSchema: {
@@ -297,7 +309,9 @@ const listDocuments = defineTool({
       .min(SEARCH_TEXT_LENGTH.min)
       .max(SEARCH_TEXT_LENGTH.max)
       .optional()
-      .describe('Free text filter, 3-10 characters (the fields searched are not documented).'),
+      .describe(
+        'Free text filter, 3-10 characters. Matches by substring, ignoring case, in the file name and in AdditionalData (verified in pre-production); it does not search signer names or the Tag.',
+      ),
     orderBy: z
       .enum(DOCUMENT_LIST_ORDER_BY)
       .optional()

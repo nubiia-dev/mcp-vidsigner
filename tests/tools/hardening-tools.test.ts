@@ -93,15 +93,62 @@ describe('tools: review fixes', () => {
     expect(text).toContain('unexpected');
   });
 
-  it('delete_batch adds the unconfirmed-endpoint warning on a 404/405', async () => {
-    const m = api(() => apiError(404, 0, 'Not found'));
-    const h = await startHarness({
-      env: { ...JWT, VIDSIGNER_ALLOW_DESTRUCTIVE: 'true' },
-      fetch: m.fetch,
+  describe('batches (verified in pre-production, 17/11/2026)', () => {
+    const destructive = { ...JWT, VIDSIGNER_ALLOW_DESTRUCTIVE: 'true' };
+
+    it('delete_batch no longer claims an unconfirmed endpoint and says what happens to the documents', async () => {
+      const m = api(() => new Response(null, { status: 200 }));
+      const h = await startHarness({ env: destructive, fetch: m.fetch });
+      const r = await h.call('vidsigner_delete_batch', { batchGuid: 'b1' });
+      expect(r.isError).toBe(false);
+      const out = r.json as { deleted: boolean; note: string; warning?: string };
+      expect(out.deleted).toBe(true);
+      expect(out.warning).toBeUndefined();
+      expect(out.note).toMatch(/404\/52000/);
+      expect(out.note).toMatch(/vidsigner_delete_document/);
+      expect(r.text).not.toMatch(/unconfirmed/i);
     });
-    const r = await h.call('vidsigner_delete_batch', { batchGuid: 'b1' });
-    expect(r.isError).toBe(true);
-    expect((r.json as { message: string }).message).toMatch(/is unconfirmed/);
+
+    it('delete_batch on an unknown or already deleted batch keeps the 500 and explains it', async () => {
+      const m = api(
+        () =>
+          new Response('Value cannot be null.\r\nParameter name: entity', {
+            status: 500,
+          }),
+      );
+      const h = await startHarness({ env: destructive, fetch: m.fetch });
+      const r = await h.call('vidsigner_delete_batch', { batchGuid: 'b1' });
+      expect(r.isError).toBe(true);
+      const e = r.json as { httpStatus: number; message: string };
+      expect(e.httpStatus).toBe(500);
+      expect(e.message).toMatch(/does not exist or was already deleted/);
+    });
+
+    it('delete_batch does not rewrite other 404s', async () => {
+      const m = api(() => apiError(404, 0, 'Not found'));
+      const h = await startHarness({ env: destructive, fetch: m.fetch });
+      const r = await h.call('vidsigner_delete_batch', { batchGuid: 'b1' });
+      expect(r.isError).toBe(true);
+      expect((r.json as { message: string }).message).not.toMatch(/already deleted/);
+    });
+
+    it('get_batch_info turns 404/52002 into an explicit { listed: false } result', async () => {
+      const m = api(() => apiError(404, 52002, 'Documents on Batch b1 not found'));
+      const h = await startHarness({ fetch: m.fetch });
+      const r = await h.call('vidsigner_get_batch_info', { batchGuid: 'b1' });
+      expect(r.isError).toBe(false);
+      expect(r.json).toMatchObject({ listed: false, batchGuid: 'b1', code: 52002 });
+      expect((r.json as { meaning: string }).meaning).toMatch(/OPEN/);
+      expect((r.json as { meaning: string }).meaning).toMatch(/vidsigner_close_batch/);
+    });
+
+    it('get_batch_info keeps every other error as an error', async () => {
+      const m = api(() => apiError(404, 52000, 'Batch b1 not found'));
+      const h = await startHarness({ fetch: m.fetch });
+      const r = await h.call('vidsigner_get_batch_info', { batchGuid: 'b1' });
+      expect(r.isError).toBe(true);
+      expect(r.json).toMatchObject({ code: 52000 });
+    });
   });
 
   it('get_document_info and get_batch_info always return the OpenAPI spelling', async () => {

@@ -56,7 +56,7 @@ describe('schema generator: the generated files are up to date', () => {
       const label = `${r.schema}.${String(r['canonical'])}`;
       // A decision may move from pending to verified without breaking this test; what it cannot do
       // is lack evidence or be verified with an open doubt (sending both spellings).
-      expect(['pending', 'verified'], label).toContain(r['status']);
+      expect(['pending', 'accepted', 'verified'], label).toContain(r['status']);
       expect(String(r['evidence']).length, label).toBeGreaterThan(20);
       if (r['status'] === 'verified' && r.kind === 'key') {
         expect(r['send'], `${label}: verified but still sends both spellings`).toBe('canonical');
@@ -76,20 +76,29 @@ describe('signer Email/eMail decision (verified in pre with POST /documents, 17/
     expect(emailRow('Signer.SignerV2DTO')).toMatchObject({ status: 'verified', send: 'canonical' });
   });
 
-  it('stays pending for the batch signer, the recipients and the other spellings', () => {
-    expect(emailRow('Signer.BatchSignerDTO')?.['status']).toBe('pending');
+  it('is accepted (not isolated) for the batch signer and stays pending for the recipients', () => {
+    expect(emailRow('Signer.BatchSignerDTO')).toMatchObject({ status: 'accepted', send: 'both' });
     expect(emailRow('DocumentRecipientDTO')?.['status']).toBe('pending');
-    const pending = allAliasRows()
-      .filter((r) => r['status'] === 'pending')
-      .map((r) => `${r.schema}:${String(r['canonical'])}`);
-    expect(pending).toEqual(
+  });
+
+  it('App/APP, CertificateGUID/GUI and whatsapp/WhatsApp are accepted by the API; the rest is pending', () => {
+    const by = (status: string) =>
+      allAliasRows()
+        .filter((r) => r['status'] === status)
+        .map((r) => `${r.schema}:${String(r['canonical'])}`);
+    expect(by('accepted')).toEqual(
       expect.arrayContaining([
         'DocAppearanceDTO:App',
         'CentralizedCertificateDTO:CertificateGUID',
         'Signer.SignerV2DTO:whatsapp',
-        'DocumentRecipientDTO:Email',
+        'Signer.BatchSignerDTO:Email',
       ]),
     );
+    expect(by('pending')).toEqual(expect.arrayContaining(['DocumentRecipientDTO:Email']));
+    // "accepted" still sends both spellings: the tools never claim to know which one is read.
+    for (const r of allAliasRows().filter((x) => x['status'] === 'accepted' && x.kind === 'key')) {
+      expect(r['send'], `${r.schema}:${String(r['canonical'])}`).toBe('both');
+    }
   });
 });
 

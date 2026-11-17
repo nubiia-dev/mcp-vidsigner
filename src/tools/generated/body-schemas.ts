@@ -513,7 +513,12 @@ const S_DocumentRecipientDTO = obj('DocumentRecipientDTO', {
 });
 
 const S_AppAppearanceDTO = obj('AppAppearanceDTO', {
-  Logo: z.string().optional().describe('URL of the corporate logo shown in the remote app.'),
+  Logo: z
+    .string()
+    .optional()
+    .describe(
+      'URL of the corporate logo shown in the remote app. MANDATORY when Appearance.App is sent, together with the four colours (a missing colour answers 400/15600): without it the API answers 400/12200 "Logo URL cannot be null or empty" (verified in pre-production). The API downloads the image.',
+    ),
   PrimaryColor: z.string().optional().describe('Hexadecimal colour of the app header.'),
   PrimaryTextColor: z.string().optional().describe('Hexadecimal colour of the app header text.'),
   SecondaryColor: z.string().optional().describe('Hexadecimal colour of the app buttons.'),
@@ -521,13 +526,20 @@ const S_AppAppearanceDTO = obj('AppAppearanceDTO', {
 });
 
 const S_EmailNotificationAppearanceDTO = obj('EmailNotificationAppearanceDTO', {
-  CorporateLogo: z.string().optional().describe('URL of the corporate logo shown in the emails.'),
+  CorporateLogo: z
+    .string()
+    .optional()
+    .describe(
+      'URL of the corporate logo shown in the emails. Needed, together with CorporateLogoWidth, when EmailNotification is sent (verified in pre-production).',
+    ),
   CorporateColor: z.string().optional().describe('Hexadecimal background colour of the emails.'),
   CorporateLogoWidth: z
     .number()
     .int()
     .optional()
-    .describe('Width of the corporate logo in the emails.'),
+    .describe(
+      'Width of the corporate logo in the emails. Must be greater than 0 when EmailNotification is sent (otherwise 400/12305 "The image width is not valid value. Value: 0").',
+    ),
 });
 
 const S_DocAppearanceDTO = obj('DocAppearanceDTO', {
@@ -831,7 +843,7 @@ export const sendDocumentShape = {
     .url()
     .optional()
     .describe(
-      'Webhook endpoint that receives status notifications. When VIDSIGNER_ALLOWED_NOTIFICATION_HOSTS is set, its host must be in that list.',
+      'Webhook endpoint that receives status notifications. When VIDSIGNER_ALLOWED_NOTIFICATION_HOSTS is set, its host must be in that list. The API stores it with a trailing / added. In a batch it must be identical in every document of the batch (otherwise 400/12205).',
     ),
   AdditionalData: z
     .string()
@@ -943,7 +955,7 @@ export const sendDocumentBatchShape = {
     .url()
     .optional()
     .describe(
-      'Webhook endpoint that receives status notifications. When VIDSIGNER_ALLOWED_NOTIFICATION_HOSTS is set, its host must be in that list.',
+      'Webhook endpoint that receives status notifications. When VIDSIGNER_ALLOWED_NOTIFICATION_HOSTS is set, its host must be in that list. The API stores it with a trailing / added. In a batch it must be identical in every document of the batch (otherwise 400/12205).',
     ),
   Tag: z
     .string()
@@ -1027,6 +1039,6 @@ export const eDeliveryShape = {
     .url()
     .optional()
     .describe(
-      'Webhook endpoint that receives status notifications. When VIDSIGNER_ALLOWED_NOTIFICATION_HOSTS is set, its host must be in that list.',
+      'Webhook endpoint that receives status notifications. When VIDSIGNER_ALLOWED_NOTIFICATION_HOSTS is set, its host must be in that list. The API stores it with a trailing / added. In a batch it must be identical in every document of the batch (otherwise 400/12205).',
     ),
 };

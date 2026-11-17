@@ -108,7 +108,8 @@ describe('selectTools over the real catalog', () => {
     const n = names(sec());
     expect(n).toContain('vidsigner_search');
     expect(n).toContain('vidsigner_search_edeliveries');
-    expect(n).toContain('vidsigner_get_document');
+    // GET /documents/{id} marks a SIGNED document as downloaded (verified in pre): not a pure read.
+    expect(n).not.toContain('vidsigner_get_document');
     expect(n).toContain('vidsigner_list_documents');
     expect(n).not.toContain('vidsigner_create_document');
     expect(n).not.toContain('vidsigner_download_signed_document');
@@ -217,9 +218,12 @@ describe('selectTools over the real catalog', () => {
     );
   });
 
-  it('GET /signeddocuments/{id} is the only mark_downloaded tool', () => {
+  it('GET /signeddocuments/{id} and GET /documents/{id} are the mark_downloaded tools (the second marks signed documents, verified in pre)', () => {
     const marks = ALL_TOOLS.filter((t) => t.risk === 'mark_downloaded');
-    expect(marks.map((t) => t.endpoint)).toEqual(['GET /signeddocuments/{id}']);
-    expect(marks[0]?.description).toMatch(/MARKS THE DOCUMENT AS DOWNLOADED/);
+    expect(marks.map((t) => t.endpoint).sort()).toEqual([
+      'GET /documents/{id}',
+      'GET /signeddocuments/{id}',
+    ]);
+    for (const m of marks) expect(m.description).toMatch(/MARKS? (THE DOCUMENT )?AS DOWNLOADED/i);
   });
 });

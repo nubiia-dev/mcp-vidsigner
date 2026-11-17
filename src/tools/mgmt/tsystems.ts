@@ -31,16 +31,19 @@ const createDocType = defineTool({
   domain: 'tsystems',
   api: 'mgmt',
   risk: 'write',
-  endpoint: 'POST /subscription/{guid}/tsystemsdoctypes',
+  endpoint: 'POST /subscription/{guid}/tsystemsdoctype',
   whenToUse: 'a T-Systems document type must be added to the subscription.',
   docSummary: 'Adds a T-Systems document type to a subscription.',
-  notes: ['Only for subscriptions configured with T-Systems Registra (otherwise 409).'],
+  notes: [
+    'Only for subscriptions configured with T-Systems Registra (otherwise 409).',
+    'The route is the SINGULAR /tsystemsdoctype, not the plural of the manual: in pre-production POST on /tsystemsdoctypes answers 405 and on /tsystemsdoctype reaches the T-Systems check (409). Only the route is verified: the demo subscription has no T-Systems, so a successful creation has not been seen.',
+  ],
   example: {
     subscriptionGuid: '0b6f1d0e-1c2a-4c55-9d8e-3a1f5b7c9e21',
     DocumentType: 'Contract',
     Code: 'DBOID-1234',
   },
-  description: `Adds a T-Systems document type to a subscription (MGMT API). ${NOTE}`,
+  description: `Adds a T-Systems document type to a subscription (MGMT API, POST /subscription/{guid}/tsystemsdoctype). The route is the singular one, not the plural written in the manual (which answers 405 in pre-production); only the route is verified, as the demo has no T-Systems. ${NOTE}`,
   inputSchema: {
     subscriptionGuid,
     DocumentType: z.string().describe('Document type description.'),

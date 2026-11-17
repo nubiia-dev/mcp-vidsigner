@@ -46,12 +46,23 @@ export const fileInputShape = {
     .describe('File content encoded in Base64. Provide exactly one of filePath / contentBase64.'),
 };
 
+/**
+ * Terms of `POST /search`. Both are mandatory: pre-production answers 400/10608 ("Search pattern
+ * not supported for terms") to `additionaldata` alone and to `elementtype` alone, and only the
+ * pair `additionaldata` + `elementtype: "document"` is served (verified 17/11/2026).
+ */
+export const SEARCH_ELEMENT_TYPES = ['document'] as const;
+
 export const SearchTermsShape = {
   additionaldata: z
     .string()
-    .optional()
+    .min(1)
     .describe(
-      'Value of the AdditionalData field sent when the document was created (exact or partial match not verified).',
+      'Value of the AdditionalData field sent when the document was created. The match is EXACT and case-sensitive (verified in pre-production): a partial value or a different case returns an empty list.',
     ),
-  elementtype: z.string().optional().describe('Type of element to search, e.g. "document".'),
+  elementtype: z
+    .enum(SEARCH_ELEMENT_TYPES)
+    .describe(
+      'Type of element to search. Mandatory, together with additionaldata: the API rejects either term alone (400/10608). The only value the API allows is "document" (others answer 400/10604).',
+    ),
 };

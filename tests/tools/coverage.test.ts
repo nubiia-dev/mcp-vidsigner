@@ -74,8 +74,18 @@ describe('coverage: API surface and manuals vs tools', () => {
     'POST /subscription/{}/stampcertificates',
   ];
 
+  /**
+   * Operations whose route in the manual does not exist in pre-production and whose tool calls the
+   * route that answers instead (verified 17/11/2026): the plural subscriptions route and the plural
+   * tsystemsdoctypes POST.
+   */
+  const VERIFIED_ROUTE: Record<string, string> = {
+    'GET /subscriptions/{}': 'GET /subscription/{}',
+    'POST /subscription/{}/tsystemsdoctypes': 'POST /subscription/{}/tsystemsdoctype',
+  };
+
   it('the 46 management operations of the manual table (minus oauth) have a tool', () => {
-    const missing = MGMT_MANUAL.filter((e) => !toolEndpoints.has(e));
+    const missing = MGMT_MANUAL.filter((e) => !toolEndpoints.has(VERIFIED_ROUTE[e] ?? e));
     expect(missing).toEqual([]);
     expect(MGMT_MANUAL).toHaveLength(46);
   });

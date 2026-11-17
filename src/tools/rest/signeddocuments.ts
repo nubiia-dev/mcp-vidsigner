@@ -32,19 +32,19 @@ const downloadSignedDocument = defineTool({
   risk: 'mark_downloaded',
   endpoint: 'GET /signeddocuments/{id}',
   whenToUse:
-    'you must consume the signed-and-not-downloaded queue on purpose; otherwise prefer vidsigner_get_document.',
+    'you must consume the signed-and-not-downloaded queue on purpose and accept that the document leaves it.',
   docSummary:
     'Downloads the signed PDF and saves it to disk. MARKS THE DOCUMENT AS DOWNLOADED and removes it from the signed-not-downloaded queue.',
   notes: [
     'Side effect: if another system shares the subscription and consumes that queue, in production it will no longer see the document.',
     'An unsigned document answers 409/50008.',
-    'Alternative that does not change the Downloaded flag (the call is recorded in the document log): vidsigner_get_document.',
+    'vidsigner_get_document (GET /documents/{id}) has the same side effect on a signed document (verified in pre-production), so it is not an alternative; the evidence report (vidsigner_get_document_report) does not mark it.',
   ],
   example: { docGuid: '0b6f1d0e-1c2a-4c55-9d8e-3a1f5b7c9e21' },
   description: [
     'WARNING: this call MARKS THE DOCUMENT AS DOWNLOADED in VIDsigner (manual 14.7/14.8) and removes it from the "signed, not downloaded" queue.',
     'If another system (for example your ERP) shares the subscription and consumes that queue, running this against production makes it miss the document.',
-    'Prefer vidsigner_get_document, which reads any document without changing the Downloaded flag (the call is recorded in the document log).',
+    'vidsigner_get_document is NOT a side-effect-free alternative: on a signed document it also marks it as downloaded (verified in pre-production). The evidence report (vidsigner_get_document_report) does not.',
     'Downloads the signed PDF and saves it to disk (GET /signeddocuments/{id}); returns the path, never the base64. An unsigned document answers 409/50008.',
   ].join(' '),
   inputSchema: { docGuid, outputFileName },
@@ -78,7 +78,7 @@ const deleteSignedDocument = defineTool({
   docSummary:
     'Marks a fully signed document as deleted. The physical removal is done later by a scheduled process.',
   notes: [
-    'Between the logical and the physical deletion it can still be downloaded.',
+    'Between the logical and the physical deletion it can still be downloaded. Verified in pre-production (17/11/2026): right after the call get_document_info still returns the document with DocStatus Signed, and vidsigner_delete_document refuses it (409/50009).',
     'An unsigned document answers 409/50008.',
   ],
   example: { docGuid: '0b6f1d0e-1c2a-4c55-9d8e-3a1f5b7c9e21' },

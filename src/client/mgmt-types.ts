@@ -131,7 +131,10 @@ export interface SubscriptionVidStamperUser {
 }
 
 export interface StatsSearchInput {
-  /** Format `yyyy/MM/dd` (changelog v1.18). */
+  /**
+   * Pre-production only parses `dd/MM/yyyy` (verified 17/11/2026); the manual's `yyyy/MM/dd`
+   * answers 400 "Date From is not correct". The MCP tool converts to `dd/MM/yyyy`.
+   */
   From: string;
   To: string;
   Type?: 'vidmobileuser' | 'vidstamperuser' | 'device';
@@ -205,12 +208,13 @@ export interface VidMobileUserCertificateInput {
   pin: string;
   /** KeyVault only: send an OTP to the phone. */
   dynamicpin?: boolean;
-  /** Defaults to `Software`. */
+  /** `Software` is deprecated: the API rejects it with 400 (verified in pre-production). */
   certtype?: 'Software' | 'KeyVault';
 }
 
 export interface CertTypesInput {
-  Software: boolean;
+  /** Deprecated: `true` is rejected with 400 "Use KeyVault instead"; it may be omitted. */
+  Software?: boolean;
   KeyVault: boolean;
   FirmaRemota: boolean;
 }

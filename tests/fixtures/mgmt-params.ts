@@ -10,6 +10,11 @@ export interface MgmtOpParams {
   method: 'GET' | 'POST' | 'PUT' | 'DELETE';
   path: string;
   tool: string;
+  /**
+   * Route that really answers in pre-production when the manual's one does not (verified 17/11/2026).
+   * The tool calls this one; `path` stays the manual's, which is what the fixture documents.
+   */
+  route?: string;
   /** Documented query parameters. */
   query: string[];
   /** Documented body fields (dotted paths for nested ones). */
@@ -152,6 +157,7 @@ export const MGMT_PARAMS: MgmtOpParams[] = [
     section: '6.14',
     method: 'GET',
     path: '/subscriptions/{}',
+    route: '/subscription/{}',
     query: [],
     body: [],
     tool: 'vidsigner_mgmt_get_subscription',
@@ -405,6 +411,7 @@ export const MGMT_PARAMS: MgmtOpParams[] = [
     section: '6.41',
     method: 'POST',
     path: '/subscription/{}/tsystemsdoctypes',
+    route: '/subscription/{}/tsystemsdoctype',
     query: [],
     body: ['DocumentType', 'Code'],
     tool: 'vidsigner_mgmt_create_tsystems_doctype',

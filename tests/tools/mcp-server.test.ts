@@ -232,10 +232,33 @@ describe('MCP: tool execution', () => {
     expect(m.calls).toHaveLength(0);
   });
 
-  it('search requires at least one term', async () => {
-    const h = await startHarness({ fetch: mockFetch(() => json(200, [])).fetch });
-    const r = await h.call('vidsigner_search', {});
-    expect(r.json).toMatchObject({ error: 'validation' });
+  it('search requires BOTH terms: additionaldata alone, elementtype alone and none are refused locally', async () => {
+    const m = mockFetch(() => json(200, []));
+    const h = await startHarness({ fetch: m.fetch });
+    const refused = async (args: Record<string, unknown>) =>
+      (
+        await h.client
+          .callTool({ name: 'vidsigner_search', arguments: args })
+          .catch(() => ({ isError: true }))
+      ).isError;
+    expect(await refused({})).toBe(true);
+    expect(await refused({ additionaldata: 'ORDER-1' })).toBe(true);
+    expect(await refused({ elementtype: 'document' })).toBe(true);
+    expect(await refused({ additionaldata: 'ORDER-1', elementtype: 'Document' })).toBe(true);
+    expect(m.calls).toHaveLength(0);
+  });
+
+  it('search sends both terms exactly as given', async () => {
+    const m = mockFetch(() => json(200, [{ DocGUI: 'd1' }]));
+    const h = await startHarness({ fetch: m.fetch });
+    const r = await h.call('vidsigner_search', {
+      additionaldata: 'ORDER-1',
+      elementtype: 'document',
+    });
+    expect(r.json).toEqual({ count: 1, items: [{ DocGUI: 'd1' }] });
+    expect(JSON.parse(String(m.calls[0]?.body))).toEqual({
+      Terms: { additionaldata: 'ORDER-1', elementtype: 'document' },
+    });
   });
 });
 

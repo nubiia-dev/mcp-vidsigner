@@ -292,13 +292,16 @@ export class VidSignerMgmtClient {
   }
 
   /**
-   * `GET /subscriptions/{id}`. The manual states `partner` scope, but the 401 error
-   * talks about the GUID of the subscription token: both are accepted.
+   * `GET /subscription/{guid}` (SINGULAR). The manual writes `GET /subscriptions/{id}` with `partner`
+   * scope, but in pre-production that route does not exist (404 "No HTTP resource was found", with
+   * the GUID and with the name) while the singular one answers with the subscription of the
+   * token (verified 17/11/2026 with subscription credentials; another GUID gives 403 "Subscription
+   * from header and parameter not equal"). Only the subscription GUID is accepted, not its name.
    */
   async getSubscription(subscriptionId: string): Promise<Subscription> {
     return this.call(
       { name: 'subscriptions.get', method: 'GET', auth: 'partner-or-subscription', ...R },
-      `/subscriptions/${seg(subscriptionId)}`,
+      `/subscription/${seg(subscriptionId)}`,
     );
   }
 
@@ -606,7 +609,7 @@ export class VidSignerMgmtClient {
         method: 'GET',
         auth: 'subscription-basic',
         ...R,
-        emptyList: 'codes-or-empty-body',
+        emptyList: 'codes-or-empty-body-or-no-certs',
       },
       `/vidmobileusers/${seg(legalId)}/certs`,
     );
@@ -664,14 +667,19 @@ export class VidSignerMgmtClient {
     );
   }
 
-  /** `POST /subscription/{guid}/tsystemsdoctypes`. */
+  /**
+   * `POST /subscription/{guid}/tsystemsdoctype` (SINGULAR, like the book code). The manual writes the
+   * plural, but in pre-production POST on the plural answers 405 and on the singular reaches the
+   * business check (409 "not configured to use T-SYSTEMS"). Only the route resolution is verified:
+   * the demo subscription has no T-Systems, so a successful creation was not seen.
+   */
   async createTSystemsDocType(
     subscriptionGuid: string,
     input: TSystemsDocTypeInput,
   ): Promise<TSystemsDocType> {
     return this.call(
       { name: 'tsystems.doctypes.create', method: 'POST', auth: 'subscription', ...NO_RETRY },
-      `/subscription/${seg(subscriptionGuid)}/tsystemsdoctypes`,
+      `/subscription/${seg(subscriptionGuid)}/tsystemsdoctype`,
       { body: input },
     );
   }

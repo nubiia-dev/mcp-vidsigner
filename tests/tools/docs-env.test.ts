@@ -45,7 +45,7 @@ describe('environment variable documentation', () => {
       /Download the signed document and the evidence report/,
       /Walk through the pending documents with pagination/,
       /## Known limitations and open questions/,
-      /Spellings to verify with a ClientID/,
+      /Which spelling the API reads/,
       /does not redistribute the documentation of Validated ID/i,
     ]) {
       expect(readme).toMatch(expected);

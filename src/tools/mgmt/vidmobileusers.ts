@@ -88,8 +88,11 @@ const getPersonalData = defineTool({
     'you must audit the enrollment data of a VIDmobile user (name, legal id and ID-card images).',
   docSummary:
     'Returns the enrollment data of a VIDmobile user: full name, legal id and the two images of the ID document, which are saved to disk (0600).',
-  notes: ['Highly sensitive personal data.'],
-  description: `Returns the enrollment data of a VIDmobile user: full name, legal id and the ID-card images (MGMT API). ${BASIC} The two images are saved to disk (0600) and only their paths are returned. Highly sensitive personal data.`,
+  notes: [
+    'Highly sensitive personal data.',
+    'Not available in pre-production: the route answers the IIS 404 page ("The resource you are looking for has been removed...") for every user, including with variants (trailing slash, singular, GUID in place of legal id). Listed in the manual, UNCONFIRMED in this environment.',
+  ],
+  description: `Returns the enrollment data of a VIDmobile user: full name, legal id and the ID-card images (MGMT API). ${BASIC} The two images are saved to disk (0600) and only their paths are returned. Highly sensitive personal data. Not available in pre-production: the route answers the IIS 404 page ("The resource you are looking for has been removed...") for every user, including with variants (trailing slash, singular, GUID in place of legal id). Listed in the manual, UNCONFIRMED in this environment.`,
   inputSchema: { legalId },
   handler: async ({ legalId }, ctx) => {
     const data = await requireMgmt(ctx).getVidMobileUserPersonalData(legalId);
@@ -122,17 +125,19 @@ const createUser = defineTool({
     '409 if the userid or the legalid already exist.',
     'The email is mandatory and validated (empty and "null" are rejected).',
     'The password goes through the arguments of the call (it ends up in the model context).',
-    'The signature image accepts filePath or contentBase64, max 100 KB.',
+    'The API REQUIRES a handwritten signature image: send filePath or contentBase64 (exactly one, max 100 KB). Without it the call is refused before reaching the API.',
+    'The API enforces a password policy (verified in pre-production): at least 8 characters, an uppercase letter, a number and one of the special characters @ # $ (! - _ . are NOT accepted as the special one); otherwise 400 "password must be contains at least an uppercase / a number / an special char like @#$".',
   ],
   example: {
     userid: 'jane@example.test',
     username: 'Jane Doe',
     legalid: '12345678Z',
     email: 'jane@example.test',
-    password: 'change-me-1234',
+    password: 'Change-me#1234',
     skipEnrollEmail: true,
+    filePath: '/Users/me/vidsigner-mcp/in/signature.png',
   },
-  description: `Creates a VIDmobile user (centralized-certificate signer) and returns its GUID (MGMT API). ${BASIC} Unless skipEnrollEmail=true it SENDS A REAL ENROLLMENT EMAIL. 409 if the userid or legalid already exists. The signature image can be a local file (filePath) or base64, max 100 KB.`,
+  description: `Creates a VIDmobile user (centralized-certificate signer) and returns its GUID (MGMT API). ${BASIC} Unless skipEnrollEmail=true it SENDS A REAL ENROLLMENT EMAIL. 409 if the userid or legalid already exists. A handwritten signature image is REQUIRED (filePath or base64, max 100 KB) and the password needs 8+ characters, an uppercase letter, a number and one of @ # $ (400 otherwise).`,
   inputSchema: {
     userid: z.string().describe('Unique user id (usually the email).'),
     username: z.string().describe('Display name of the user.'),
@@ -142,7 +147,9 @@ const createUser = defineTool({
       .string()
       .min(4)
       .max(100)
-      .describe('Password of the user, 4-100 characters (a secret).'),
+      .describe(
+        'Password of the user, 4-100 characters (a secret). The API requires 8+ characters, an uppercase letter, a number and one of @ # $: otherwise 400.',
+      ),
     skipEnrollEmail: z.boolean().describe('true to NOT send the enrollment email.'),
     PhoneNumber: z.string().optional().describe('E.164.'),
     Language: z
@@ -310,9 +317,10 @@ const setState = defineTool({
   docSummary: 'Changes the state of a VIDmobile user. Deactivating it blocks their signatures.',
   notes: [
     'The operation appears in the manual table with no detail: the valid values of state are undocumented (probably active and inactive).',
+    'Not available in pre-production: PUT /vidmobileusers/{legalid}/state/{state} answers the IIS 404 page for active, inactive, Active, 1, 0, true and false, with and without trailing slash. UNCONFIRMED in this environment: it may not be deployed.',
   ],
   example: { legalId: '12345678Z', state: 'inactive' },
-  description: `Changes the state of a VIDmobile user (MGMT API). DESTRUCTIVE: deactivating the user blocks their signatures. The operation appears in the manual's table with no detail: the valid values of state are undocumented, so try "active"/"inactive" only in pre-production. ${BASIC}`,
+  description: `Changes the state of a VIDmobile user (MGMT API). DESTRUCTIVE: deactivating the user blocks their signatures. The operation appears in the manual's table with no detail: the valid values of state are undocumented. NOT AVAILABLE in pre-production: every attempt (active, inactive, 1, 0, true, false) answered the IIS 404 page, so the route is unconfirmed. ${BASIC}`,
   inputSchema: {
     legalId,
     state: z.string().min(1).describe('Undocumented; probably active / inactive.'),
@@ -336,9 +344,10 @@ const getUserToken = defineTool({
     'Requests the token of a VIDmobile user. The token is a secret: it is never returned; the response is saved to a 0600 file and only its path is returned.',
   notes: [
     'The manual lists it without a detail section: the response format is undocumented.',
+    'Not available in pre-production: the route answers the IIS 404 page ("The resource you are looking for has been removed...") for every user, including with variants (trailing slash, singular, GUID in place of legal id). Listed in the manual, UNCONFIRMED in this environment.',
     'It requires VIDSIGNER_ALLOW_CREDENTIAL_READS, which is separate from VIDSIGNER_ALLOW_SIGNING_LINKS.',
   ],
-  description: `Requests the token of a VIDmobile user (MGMT API). The manual lists it without a detail section, so the response format is undocumented. ${BASIC} The token is a secret: it is NEVER returned; the raw response is saved to a 0600 file and only its path is returned.`,
+  description: `Requests the token of a VIDmobile user (MGMT API). The manual lists it without a detail section, so the response format is undocumented. NOT AVAILABLE in pre-production: the route answers the IIS 404 page for every user (unconfirmed in this environment). ${BASIC} The token is a secret: it is NEVER returned; the raw response is saved to a 0600 file and only its path is returned.`,
   inputSchema: { legalId },
   handler: async ({ legalId }, ctx) => {
     const raw = await requireMgmt(ctx).getVidMobileUserToken(legalId);

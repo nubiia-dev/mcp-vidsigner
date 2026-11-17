@@ -115,8 +115,8 @@ const header = '| Operation | Client method | MCP tool | Risk |\n|---|---|---|--
 const aliasRows = allAliasRows()
   .map((r) =>
     r.kind === 'key'
-      ? `| \`${r.schema}\` | \`${r.canonical}\` / \`${r.alias}\` | ${r.send === 'both' ? 'both' : 'canonical only'} | ${r.status === 'pending' ? 'pending' : 'verified'} |`
-      : `| \`${r.schema}\` | \`${r.field}\`: \`${r.canonical}\` / ${r.aliases.map((a) => `\`${a}\``).join(', ')} | canonical only | ${r.status === 'pending' ? 'pending' : 'verified'} |`,
+      ? `| \`${r.schema}\` | \`${r.canonical}\` / \`${r.alias}\` | ${r.send === 'both' ? 'both' : 'canonical only'} | ${r.status} |`
+      : `| \`${r.schema}\` | \`${r.field}\`: \`${r.canonical}\` / ${r.aliases.map((a) => `\`${a}\``).join(', ')} | canonical only | ${r.status} |`,
   )
   .join('\n');
 
@@ -329,7 +329,11 @@ ${detail('mgmt')}
 
 ## Alternative spellings (OpenAPI versus manual)
 
-The tools accept both spellings, normalize them to the canonical one and, where there is a real doubt, send both. The decision lives in \`src/tools/aliases.ts\`. Only the signer \`Email\` / \`eMail\` of \`POST /documents\` is **verified** (pre-production, 17/11/2026: the server is case-insensitive and, if the two values differ, the last key wins, which is why different values are rejected); the rest is **pending verification in pre-production** (writes require a JWT).
+The tools accept both spellings, normalize them to the canonical one and, where there is a real doubt, send both with the same value. The decision lives in \`src/tools/aliases.ts\`. Statuses (pre-production, 17/11/2026):
+
+- **verified**: the signer \`Email\` / \`eMail\` of \`POST /documents\`. The server is case-insensitive and, if the two values differ, **the last key of the JSON wins**, which is why the tools reject different values and send only \`Email\`.
+- **accepted**: the API accepts both spellings (a real \`POST\` answered 200), but **which one it reads when they differ is not determined**, so both are still sent with the same value. This covers the \`Email\` / \`eMail\` of the batch signer, \`App\` / \`APP\` (\`Appearance\`), \`CertificateGUID\` / \`CertificateGUI\` (the API reads at least one: an unknown GUID answers 400/90000) and \`whatsapp\` / \`WhatsApp\` (\`OTPChannel\`; the delivery itself could not be observed).
+- **pending**: not exercised against the API (the recipients' \`Email\` / \`eMail\`, \`RejectionOptions\` and the response-side spellings).
 
 | Schema | Field | Sent | Status |
 |---|---|---|---|

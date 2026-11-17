@@ -19,7 +19,9 @@ const getSignatureUrl = defineTool({
   notes: [
     'Only works if the signer was created with SkipSignatureEmail=true (otherwise 409/16601) and the subscription has the AllowSkipEmail permission (otherwise 409/40111).',
     'Every call records the evidence SIGNATUREURL_RETRIEVED in the report of the document (not documented by the vendor): do not call it exploratively or repeatedly.',
-    'The URL is stable per signer (it is the same one the resend email carries) and it cannot be rotated: it is only invalidated by expiring or deleting the document.',
+    'The URL is stable per signer (it is the same one the resend email carries) and it cannot be rotated.',
+    'ORDERED signing (OrderedGroups=true): the link of a signer who is not next in line answers 409 with code 0 "Is no next signature" until the signer before them has signed (verified in pre-production: the first signer gets the URL, the second one the 409). Ask again once the previous signer has signed; the error carries a hint.',
+    'EXPIRED document: the API still returns a URL for it (verified in pre-production after vidsigner_expire_document; the document stays Unsigned, see that tool). Whether the link still lets someone sign was NOT verified because links are never opened here: do not hand out the link of an expired document.',
     'With emailandsms the signer must also pass the OTP: the link is the first factor, not the only one, unless the signer was created with AllowEmptyPhoneNumber.',
     'The link is a bearer credential: anyone who opens it can start the signing. Hand it only to the signer.',
     'returnUrl is validated against the notification destination policy.',
@@ -29,7 +31,8 @@ const getSignatureUrl = defineTool({
     'Returns the VIDremote signing link of a signer (GET /signature/{SignerGUID}/vidremoteurl).',
     'Only works if the signer was created with SkipSignatureEmail=true; otherwise 409/16601. The subscription also needs AllowSkipEmail (otherwise 409/40111).',
     'Each call leaves the evidence SIGNATUREURL_RETRIEVED in the report of the document (undocumented by the vendor), so never call it exploratively or repeatedly.',
-    'The URL is stable per signer (the same one as in the resend email) and cannot be rotated; only expiring or deleting the document invalidates it.',
+    'The URL is stable per signer (the same one as in the resend email) and cannot be rotated.',
+    'In an ordered flow the second signer gets 409 "Is no next signature" until the first has signed. On an expired document the API still returns a URL (not opened, so its usability is unverified): do not hand it out.',
     'With emailandsms the signer must also pass the OTP, so the link is the first factor, not the only one (except with AllowEmptyPhoneNumber).',
     'Optionally appends url_return (Base64) so the signer is redirected there afterwards.',
     'The link is a bearer credential: anyone who opens it can start the signing. Never open it from here; hand it only to the intended signer.',
@@ -65,6 +68,7 @@ const sendSignatureUrl = defineTool({
   docSummary: 'Resends the VIDremote signing link to the signer by email or SMS.',
   notes: [
     'Sends a real message to the signer.',
+    'The evidence recorded on the document is EMAIL_RESENT for the email channel and REMINDER_SENT for the SMS channel (verified in pre-production).',
     'Only for pending remote signatures. It also works on documents created with SkipSignatureEmail=true (verified in pre-production: 200 without body, evidence EMAIL_RESENT).',
     'It is not retried automatically.',
     'The destination and texts go through the recipient policy.',
@@ -189,7 +193,11 @@ const getSignatureMetadata = defineTool({
     'you need the handwritten signature image and the biometric metadata of a tablet (BIO) signature.',
   docSummary:
     'Downloads the handwritten signature image and the encrypted biometric XML of a BIO signature and saves them to disk.',
-  notes: ['Only in the OpenAPI.', 'Returns paths, never base64.'],
+  notes: [
+    'Only in the OpenAPI.',
+    'Returns paths, never base64.',
+    'BIO (tablet) signatures only: on a REMOTE signature, even one already signed through VIDremote, the API answers 409/50008 "is not yet signed" (verified in pre-production, 17/11/2026).',
+  ],
   description:
     'Downloads the handwritten signature image and the encrypted biometric XML metadata of a BIO signature (GET /signature/{id}/signaturedata) and saves them to disk. Returns the paths, never the base64. Only in the OpenAPI.',
   inputSchema: { signerGuid },
@@ -216,7 +224,10 @@ const getSignatureEvidence = defineTool({
     'you need the evidence of a tablet (BIO) signature: signer, device, geolocation and stylus profile.',
   docSummary:
     'Returns the evidence of a BIO signature: document, signer, tablet, geolocation and stylus profile. The signature image is saved to disk.',
-  notes: ['Only in the OpenAPI.'],
+  notes: [
+    'Only in the OpenAPI.',
+    'BIO (tablet) signatures only: on a REMOTE signature, even one already signed through VIDremote, the API answers 404/13500 "Signer not found" (verified in pre-production, 17/11/2026). For remote signatures use vidsigner_get_document_info (Evidences) and vidsigner_get_document_report.',
+  ],
   description:
     'Returns the evidence of a BIO signature: document, signer, tablet device, geolocation and stylus/profile (GET /signature/{id}/evidence). The signature image is saved to disk and replaced by its path. Only in the OpenAPI.',
   inputSchema: { signerGuid },
@@ -239,9 +250,12 @@ const getVidMobileSignatureRequest = defineTool({
   endpoint: 'GET /vidmobileuser/signaturerequest/{id}',
   whenToUse: 'you need the CMS container of a VIDmobile signature request (Swisscom integration).',
   docSummary: 'Returns the CMS container of a VIDmobile signature request and saves it to disk.',
-  notes: ['Only in the OpenAPI; the manual does not document it.'],
+  notes: [
+    'Only in the OpenAPI; the manual does not document it.',
+    'It does NOT accept the subscription token this MCP uses: the API answers 401 "Invalid Authentication Token Role. Accepted Roles: vidmobilecert\\swisscom. Presented Role: subscription" (verified in pre-production). It needs the token of a VIDmobile user (role vidmobilecert), so with the credentials of this MCP it always fails.',
+  ],
   description:
-    'Returns the CMS signature container of a VIDmobile signature request (GET /vidmobileuser/signaturerequest/{id}, Swisscom integration). The CMS is saved to disk. Only in the OpenAPI; undocumented in the manual.',
+    'Returns the CMS signature container of a VIDmobile signature request (GET /vidmobileuser/signaturerequest/{id}, Swisscom integration). The CMS is saved to disk. Only in the OpenAPI; undocumented in the manual. With the subscription token this MCP uses the API answers 401 (role "subscription" presented, only vidmobilecert/swisscom accepted): it needs a VIDmobile user token, which this MCP does not send.',
   inputSchema: { requestId: id('Signature request id.') },
   handler: async ({ requestId }, { rest, files }) => {
     const res = await rest.getVidMobileSignatureRequest(requestId);

@@ -40,7 +40,7 @@
       "description": "Date after which the document is deleted from VIDsigner. Format dd/MM/yyyy HH:mm:ss."
     },
     "*.NotificationURL": {
-      "description": "Webhook endpoint that receives status notifications. When VIDSIGNER_ALLOWED_NOTIFICATION_HOSTS is set, its host must be in that list.",
+      "description": "Webhook endpoint that receives status notifications. When VIDSIGNER_ALLOWED_NOTIFICATION_HOSTS is set, its host must be in that list. The API stores it with a trailing / added. In a batch it must be identical in every document of the batch (otherwise 400/12205).",
       "format": "url"
     },
     "*.AdditionalData": {
@@ -104,7 +104,7 @@
       "description": "Customisation of the notification emails."
     },
     "AppAppearanceDTO.Logo": {
-      "description": "URL of the corporate logo shown in the remote app."
+      "description": "URL of the corporate logo shown in the remote app. MANDATORY when Appearance.App is sent, together with the four colours (a missing colour answers 400/15600): without it the API answers 400/12200 \"Logo URL cannot be null or empty\" (verified in pre-production). The API downloads the image."
     },
     "AppAppearanceDTO.PrimaryColor": { "description": "Hexadecimal colour of the app header." },
     "AppAppearanceDTO.PrimaryTextColor": {
@@ -115,13 +115,13 @@
       "description": "Hexadecimal colour of the app button text."
     },
     "EmailNotificationAppearanceDTO.CorporateLogo": {
-      "description": "URL of the corporate logo shown in the emails."
+      "description": "URL of the corporate logo shown in the emails. Needed, together with CorporateLogoWidth, when EmailNotification is sent (verified in pre-production)."
     },
     "EmailNotificationAppearanceDTO.CorporateColor": {
       "description": "Hexadecimal background colour of the emails."
     },
     "EmailNotificationAppearanceDTO.CorporateLogoWidth": {
-      "description": "Width of the corporate logo in the emails."
+      "description": "Width of the corporate logo in the emails. Must be greater than 0 when EmailNotification is sent (otherwise 400/12305 \"The image width is not valid value. Value: 0\")."
     },
     "*.NotificationConfig": {
       "description": "Which webhook notifications are sent to NotificationURL and how they are authenticated."

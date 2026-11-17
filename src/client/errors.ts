@@ -108,8 +108,28 @@ export function hintFor(err: VidSignerError): string | undefined {
       return 'pageNumber starts at 1.';
     case 10510:
       return 'pageSize must be greater than 0 and less than 100.';
+    case 12205:
+      return 'In a batch every document must carry the same NotificationURL (or none at all): send the same value on all of them, or omit it on all of them. Verified in pre-production.';
+    case 12200:
+      return 'A required URL is missing. In an Appearance block (POST /documents) Appearance.App needs Logo, a URL the API downloads, plus its four colours (PrimaryColor, PrimaryTextColor, SecondaryColor, SecondaryTextColor; each missing one is 400/15600) (verified in pre-production); in a batch, a notification configuration needs NotificationURL.';
+    case 12305:
+      return 'Appearance.EmailNotification needs CorporateLogo and a CorporateLogoWidth greater than 0.';
+    case 90140:
+      return 'A stamp certificate needs its Pin: the API refuses an empty one.';
+    case 52002:
+      return 'The API answers 404/52002 for a batch that does not exist, has no documents, or is still OPEN (verified in pre-production: an open batch is not listed even with documents). Close it with vidsigner_close_batch and ask again.';
     default:
       break;
+  }
+  if (err.code === 0 && /no next signature/i.test(err.message)) {
+    return 'In an ordered signing flow the link of a signer is only available once the signer before them has signed (verified in pre-production). Ask again after the previous signer has signed.';
+  }
+  if (
+    err.httpStatus === 404 &&
+    err.code === undefined &&
+    /has been removed, had its name changed, or is temporarily unavailable/i.test(err.message)
+  ) {
+    return 'This route does not exist in this environment (the IIS 404 page, not an API error). The operation is unconfirmed here: it is listed in the manual but the server does not serve it.';
   }
   if (err.kind === 'auth' && err.code === undefined) {
     return 'Check VIDSIGNER_CLIENT_ID/SECRET and VIDSIGNER_SUBSCRIPTION_NAME/PASS.';

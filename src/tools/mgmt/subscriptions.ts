@@ -145,13 +145,17 @@ const getSubscription = defineTool({
   domain: 'subscriptions',
   api: 'mgmt',
   risk: 'read',
-  endpoint: 'GET /subscriptions/{id}',
+  endpoint: 'GET /subscription/{guid}',
   whenToUse: 'you need one subscription with its channel limits.',
   docSummary:
-    'Returns a subscription with the limits of its channels. The password is never shown.',
+    'Returns a subscription with the limits of its channels. The password is never shown. The route is the singular /subscription/{guid}, not the manual /subscriptions/{id}.',
+  notes: [
+    'The route is the SINGULAR /subscription/{guid}. The manual writes /subscriptions/{id}, but in pre-production that route does not exist (404 "No HTTP resource was found", with the GUID and with the name) while the singular one answers (verified on 17/11/2026 with subscription credentials).',
+    'Only the subscription GUID works, not its name, and only the one of your own credentials: another GUID answers 403 "Subscription from header and parameter not equal". Partner credentials have not been tried.',
+  ],
   description:
-    'Returns a subscription with its channel limits (MGMT API, GET /subscriptions/{id}). SubscriptionPass is never shown.',
-  inputSchema: { subscriptionId: id('Subscription GUID (or id).') },
+    'Returns a subscription with its channel limits (MGMT API, GET /subscription/{guid}). SubscriptionPass is never shown. The manual writes GET /subscriptions/{id}, which does not exist in pre-production (404); the singular route is the one that answers. It takes the GUID of the subscription of your credentials, not its name.',
+  inputSchema: { subscriptionId: id('Subscription GUID (not the subscription name).') },
   handler: async ({ subscriptionId }, ctx) =>
     hideSecrets(await requireMgmt(ctx).getSubscription(subscriptionId)),
 });

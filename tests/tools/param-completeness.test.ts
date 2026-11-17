@@ -315,7 +315,9 @@ describe('signature: API surface + manual extras -> schema -> wire', () => {
 describe('management: MGMT manual -> schema -> wire', () => {
   it('46 documented operations, each with its tool', () => {
     expect(MGMT_PARAMS).toHaveLength(46);
-    for (const o of MGMT_PARAMS) expect(toolByOp.has(`${o.method} ${o.path}`), o.tool).toBe(true);
+    for (const o of MGMT_PARAMS) {
+      expect(toolByOp.has(`${o.method} ${o.route ?? o.path}`), o.tool).toBe(true);
+    }
   });
 
   for (const op of MGMT_PARAMS) {
@@ -326,7 +328,7 @@ describe('management: MGMT manual -> schema -> wire', () => {
       const call = run.calls[0];
       expect(call, `${op.tool} made no request`).toBeDefined();
       expect(call?.method).toBe(op.method);
-      const re = new RegExp(`^/api${op.path.replace(/\{\}/g, '[^/]+')}/?$`);
+      const re = new RegExp(`^/api${(op.route ?? op.path).replace(/\{\}/g, '[^/]+')}/?$`);
       expect(call?.url.pathname, op.tool).toMatch(re);
       const query = new Set([...(call?.url.searchParams.keys() ?? [])].map((k) => k.toLowerCase()));
       const visible = visibleProps(run.schema);

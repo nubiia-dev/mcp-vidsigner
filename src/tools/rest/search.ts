@@ -12,27 +12,19 @@ const search = defineTool({
   docSummary:
     'Searches documents by AdditionalData and returns their DocGUIs. It is read-only even though it uses POST.',
   notes: [
-    'elementtype alone is rejected with 400/10608: always send additionaldata (optionally with elementtype).',
+    'Both additionaldata and elementtype are mandatory: either one alone is rejected by the API with 400/10608. The only elementtype value is "document": "documents", "edelivery" and "batch" answer 400/10604 "Not allowed value for search term ElementType" (verified in pre-production).',
+    'The match on additionaldata is EXACT and case-sensitive (verified in pre-production): a prefix, a substring or a different case returns an empty list. To search by part of the value or ignoring the case use vidsigner_list_documents with searchText.',
     'An empty result is returned as an empty list.',
   ],
   example: { additionaldata: 'ORDER-2026-0001', elementtype: 'document' },
   description: [
     'Finds documents whose AdditionalData matches, returning their DocGUIs (POST /search).',
-    'Allowed terms: additionaldata and elementtype (e.g. "document"). It is a read-only search despite using POST, so it is available in read-only production mode.',
-    'Verified in pre-production: elementtype alone is rejected (400/10608 "Search pattern not supported"); always send additionaldata (optionally with elementtype). An empty result is returned as an empty array.',
+    'Send BOTH additionaldata and elementtype ("document"): the API rejects either term alone (400/10608 "Search pattern not supported"), as verified in pre-production.',
+    'The match is exact and case-sensitive; an empty result is returned as an empty array. It is a read-only search despite using POST, so it is available in read-only production mode.',
   ].join(' '),
   inputSchema: SearchTermsShape,
   handler: async ({ additionaldata, elementtype }, { rest }) => {
-    const terms: Record<string, string> = {};
-    if (additionaldata !== undefined) terms['additionaldata'] = additionaldata;
-    if (elementtype !== undefined) terms['elementtype'] = elementtype;
-    if (Object.keys(terms).length === 0) {
-      return {
-        error: 'validation',
-        message: 'Provide at least one of additionaldata or elementtype.',
-      };
-    }
-    const items = await rest.search({ Terms: terms });
+    const items = await rest.search({ Terms: { additionaldata, elementtype } });
     return { count: items.length, items };
   },
 });
