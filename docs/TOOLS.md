@@ -13,11 +13,11 @@ How many tools the server registers in each configuration (computed with the rea
 | pre, default                                                          | 30        | 0          | 30    |
 | pre + `VIDSIGNER_ENABLE_MGMT`                                         | 30        | 33         | 63    |
 | pre + management + `VIDSIGNER_ALLOW_DESTRUCTIVE`                      | 35        | 46         | 81    |
-| pro, default (read-only)                                              | 18        | 0          | 18    |
-| pro + `VIDSIGNER_ENABLE_MGMT`                                         | 18        | 16         | 34    |
-| pro + `VIDSIGNER_ALLOW_WRITE`                                         | 28        | 0          | 28    |
+| pro, default (read-only)                                              | 17        | 0          | 17    |
+| pro + `VIDSIGNER_ENABLE_MGMT`                                         | 17        | 16         | 33    |
+| pro + `VIDSIGNER_ALLOW_WRITE`                                         | 27        | 0          | 27    |
 | pro + `ALLOW_WRITE` + `ALLOW_MARK_DOWNLOADED` + `ALLOW_SIGNING_LINKS` | 30        | 0          | 30    |
-| pro + management + `ALLOW_CREDENTIAL_READS`                           | 18        | 18         | 36    |
+| pro + management + `ALLOW_CREDENTIAL_READS`                           | 17        | 18         | 35    |
 | pro with every flag                                                   | 35        | 46         | 81    |
 
 ## Signature API (VIDcloud 3.0): 35 tools
@@ -25,7 +25,7 @@ How many tools the server registers in each configuration (computed with the rea
 | Operation                                  | Client method                      | MCP tool                                    | Risk                |
 | ------------------------------------------ | ---------------------------------- | ------------------------------------------- | ------------------- |
 | `POST /documents`                          | `createDocument`                   | `vidsigner_create_document`                 | write               |
-| `GET /documents/{id}`                      | `getDocument`                      | `vidsigner_get_document`                    | read                |
+| `GET /documents/{id}`                      | `getDocument`                      | `vidsigner_get_document`                    | marks as downloaded |
 | `DELETE /documents/{id}`                   | `deleteDocument`                   | `vidsigner_delete_document`                 | destructive         |
 | `GET /documents/{id}/loginfo`              | `getDocumentLog`                   | `vidsigner_get_document_log`                | read                |
 | `PUT /documents/{docGuid}/expire`          | `expireDocument`                   | `vidsigner_expire_document`                 | destructive         |
@@ -73,7 +73,7 @@ How many tools the server registers in each configuration (computed with the rea
 | `DELETE /customers/{customerguid}`                    | `deleteCustomer`                       | `vidsigner_mgmt_delete_customer`                       | destructive     |
 | `GET /customers/{customerguid}/subscriptions`         | `listCustomerSubscriptions`            | `vidsigner_mgmt_list_subscriptions`                    | read            |
 | `POST /customers/{customerguid}/subscriptions`        | `createSubscription`                   | `vidsigner_mgmt_create_subscription`                   | write           |
-| `GET /subscriptions/{id}`                             | `getSubscription`                      | `vidsigner_mgmt_get_subscription`                      | read            |
+| `GET /subscription/{guid}`                            | `getSubscription`                      | `vidsigner_mgmt_get_subscription`                      | read            |
 | `PUT /subscription/{subscriptionguid}`                | `updateSubscription`                   | `vidsigner_mgmt_update_subscription`                   | destructive     |
 | `PUT /subscription/{guid}/status/{status}`            | `setSubscriptionStatus`                | `vidsigner_mgmt_set_subscription_status`               | destructive     |
 | `DELETE /subscription/{subscriptionguid}`             | `deleteSubscription`                   | `vidsigner_mgmt_delete_subscription`                   | destructive     |
@@ -105,7 +105,7 @@ How many tools the server registers in each configuration (computed with the rea
 | `PUT /devices/{DeviceName}`                           | `updateDevice`                         | `vidsigner_mgmt_update_device`                         | write           |
 | `DELETE /devices/{DeviceName}`                        | `deleteDevice`                         | `vidsigner_mgmt_delete_device`                         | destructive     |
 | `GET /subscription/{guid}/tsystemsdoctypes`           | `listTSystemsDocTypes`                 | `vidsigner_mgmt_list_tsystems_doctypes`                | read            |
-| `POST /subscription/{guid}/tsystemsdoctypes`          | `createTSystemsDocType`                | `vidsigner_mgmt_create_tsystems_doctype`               | write           |
+| `POST /subscription/{guid}/tsystemsdoctype`           | `createTSystemsDocType`                | `vidsigner_mgmt_create_tsystems_doctype`               | write           |
 | `DELETE /tsystemsdocumenttype/{guid}`                 | `deleteTSystemsDocType`                | `vidsigner_mgmt_delete_tsystems_doctype`               | destructive     |
 | `GET /subscription/{guid}/tsystemsbookcodes`          | `listTSystemsBookCodes`                | `vidsigner_mgmt_list_tsystems_bookcodes`               | read            |
 | `POST /subscription/{guid}/tsystemsbookcode`          | `createTSystemsBookCode`               | `vidsigner_mgmt_create_tsystems_bookcode`              | write           |
@@ -143,22 +143,27 @@ How many tools the server registers in each configuration (computed with the rea
   - For a signing link without email: SkipSignatureEmail=true on the signer (the subscription needs AllowSkipEmail, otherwise 409/40111) and then vidsigner_get_signature_url.
   - NotificationEmailMessage is required for every emailandsms signer unless SkipSignatureEmail=true, and must be omitted (null) when SkipSignatureEmail=true. Otherwise the API answers 400/12541 ("NotificationEmailMessage cannot be null for Signer") or 400/12544 ("NotificationEmailMessage must be null if SkipSignatureEmail is true"). Verified in pre-production on 17/11/2026; the client does not enforce it.
   - The signer email accepts null, empty or "null"; all other emails (recipients, notifications) are mandatory and validated.
-  - The signer Email/eMail spellings are both accepted (verified in pre-production: if the values differ, the last key wins, so the tool rejects different values). The other alternative spellings (APP/App, CertificateGUI/CertificateGUID...) are still pending verification.
+  - The signer Email/eMail spellings are both accepted (verified in pre-production: if the values differ, the last key wins, so the tool rejects different values). APP/App, CertificateGUI/CertificateGUID and WhatsApp/whatsapp are also ACCEPTED by the API (verified in pre-production); which spelling it reads when the values differ is not determined (the tools never send different values).
+  - Appearance: Appearance.App needs Logo (a URL the API downloads) AND all four colours (PrimaryColor, PrimaryTextColor, SecondaryColor, SecondaryTextColor): without Logo the API answers 400/12200 "Logo URL cannot be null or empty", and each missing colour 400/15600 "PrimaryTextColor cannot be null or empty". Appearance.EmailNotification needs CorporateLogo and a CorporateLogoWidth greater than 0 (otherwise 400/12305 "The image width is not valid value. Value: 0"). Verified in pre-production.
+  - NotificationURL: the API stores it with a trailing "/" added (a value sent as https://host/path is read back by get_document_info as https://host/path/). Verified in pre-production.
+  - get_document_info does not echo Reminder, OTPChannel, Appearance or the centralized certificate: they are accepted on creation but cannot be read back, so you cannot confirm them afterwards (verified in pre-production).
   - Accepts the PDF via filePath (inside VIDSIGNER_ALLOWED_INPUT_DIRS) or contentBase64; exactly one.
 - **Example:** `{"filePath":"/Users/me/vidsigner-mcp/in/contract.pdf","IssuerName":"Acme","SignersGroups":[{"Signers":[{"SignatureType":"emailandsms","SignerName":"Jane Doe","Email":"jane@example.test","PhoneNumber":"+34600111222","Language":"es","NotificationEmailMessage":{"eMailSubject":"Contract to sign","eMailBody":"<p>Hello Jane, please sign the contract.</p>"}}]}]}`
 
 #### `vidsigner_get_document`
 
 - **Operation:** `GET /documents/{id}`
-- **Risk:** read
-- **Flags:** none (default in pre: yes; in pro: yes)
-- **Description:** Downloads the PDF of a document in any status and saves it to disk. Unlike vidsigner_download_signed_document, it does not mark the document as downloaded.
+- **Risk:** marks as downloaded
+- **Flags:** `VIDSIGNER_ALLOW_MARK_DOWNLOADED=true` (default in pre: yes; in pro: no)
+- **Description:** Downloads the PDF of a document in any status and saves it to disk. On a SIGNED document it MARKS IT AS DOWNLOADED (verified in pre-production), exactly like vidsigner_download_signed_document, contrary to what the manual says; on an unsigned document it does not change the flag.
 - **Main parameters:**
   - `docGuid` (string, required): Document GUID (DocGUI), as returned when the document was created.
   - `outputFileName` (string, optional): Optional base file name for the downloaded file.
 - **Notes and restrictions:**
   - Returns the file path, never the base64 content.
-  - It does not change the Downloaded flag (the call is recorded in the document log), so it is the safe way to read a signed PDF on a subscription shared with another system.
+  - SIDE EFFECT verified in pre-production (17/11/2026, a document signed through VIDremote): GET /documents/{id} on a SIGNED document sets Downloaded=true and removes it from the signed-not-downloaded queue (vidsigner_list_signed_documents), although manual 14.18 says it does not. Other integrations of the same subscription that consume that queue will no longer see the document. That is why this tool needs VIDSIGNER_ALLOW_MARK_DOWNLOADED=true, like vidsigner_download_signed_document.
+  - On an unsigned or rejected document it does not change the Downloaded flag (verified). The call is recorded in the document log ("Downloaded document. Current Status = ...").
+  - There is NO side-effect-free way to read the PDF of a signed document through this API; vidsigner_get_document_report (the evidence report) and vidsigner_get_document_info do not mark it.
 - **Example:** `{"docGuid":"0b6f1d0e-1c2a-4c55-9d8e-3a1f5b7c9e21"}`
 
 #### `vidsigner_delete_document`
@@ -197,7 +202,10 @@ How many tools the server registers in each configuration (computed with the rea
   - `docGuid` (string, required): Document GUID (DocGUI), as returned when the document was created.
 - **Notes and restrictions:**
   - It is irreversible.
-  - The evidence report of an expired document is available 30 days after expiration.
+  - The document does NOT move to an "Expired" status: get_document_info keeps reporting DocStatus Unsigned, and what changes is ExpirationTime, which is brought forward to the moment of the call (verified in pre-production).
+  - The evidence report (vidsigner_get_document_report) is available straight away on the expired document; the manual says it stays available 30 days.
+  - Expiring again an already expired document answers 409 (code 0, "DocStatus: Unsigned is not valid for updating").
+  - vidsigner_get_signature_url still returns a URL for an expired document (not opened, so whether it still lets someone sign is unverified): treat the document as closed and do not hand out its links.
 - **Example:** `{"docGuid":"0b6f1d0e-1c2a-4c55-9d8e-3a1f5b7c9e21"}`
 
 #### `vidsigner_get_document_report`
@@ -227,6 +235,10 @@ How many tools the server registers in each configuration (computed with the rea
 - **Notes and restrictions:**
   - Contains personal data of the signers.
   - Groups are always returned under SignerGroups even if the server spells it SignersGroups, as in the manual.
+  - It does NOT return what was sent as Reminder, OTPChannel or Appearance, nor the centralized certificate (CertificateGUID) of a mobile signature: they cannot be read back (verified in pre-production).
+  - DocStatus of an expired document stays Unsigned; there is no Expired status (see vidsigner_expire_document).
+  - Verified on documents signed and rejected through VIDremote (17/11/2026): DocStatus is Signed or Rejected, the signer carries SignatureStatus and, when rejected, RejectionReason (the text the signer typed). Evidence types seen: SIGNATUREURL_RETRIEVED, EMAIL_CLICKED, OTP_SENT, OTP_VERIFIED, DOC_SIGNED, DOC_REJECTED, EMAIL_SENT, EMAIL_RESENT, REMINDER_SENT; each evidence is an object with EvidenceType and EvidenceDate.
+  - NotificationURL is read back with a trailing "/" added by the API.
 - **Example:** `{"docGuid":"0b6f1d0e-1c2a-4c55-9d8e-3a1f5b7c9e21"}`
 
 #### `vidsigner_list_documents`
@@ -239,14 +251,14 @@ How many tools the server registers in each configuration (computed with the rea
   - `filter` (`all` \| `unsigned` \| `signed` \| `rejected` \| `signeddownloaded` \| `signednotdownloaded`, required): Document status filter.
   - `pageNumber` (integer, optional): Page number, starting at 1.
   - `pageSize` (integer, optional): Items per page, 1-99.
-  - `searchText` (string, optional): Free text filter, 3-10 characters (the fields searched are not documented).
+  - `searchText` (string, optional): Free text filter, 3-10 characters.
   - `orderBy` (`FileName` \| `DocStatus` \| `Downloaded` \| `AdditionalData` \| `UploadTime`, optional): Field to order by (DocGUI is rejected by the server with 400/10500).
   - `orderType` (`asc` \| `des` \| `desc`, optional): asc, des or desc.
   - `fetchAll` (boolean, optional): Fetch all pages and return every item.
   - `maxPages` (integer, optional): Safety cap of pages when fetchAll=true.
 - **Notes and restrictions:**
   - pageNumber starts at 1 and pageSize must be between 1 and 99: with 100 or more the API answers 400.
-  - searchText has 3 to 10 characters.
+  - searchText has 3 to 10 characters. Verified in pre-production: it matches by SUBSTRING and ignoring case against the file name (FileName) and AdditionalData; it does NOT search the signer name nor the Tag.
   - orderBy accepts FileName, DocStatus, Downloaded, AdditionalData and UploadTime; DocGUI gives 400/10500 (verified in pre-production).
   - orderType: asc, des or desc; the server only understands asc and des, so desc is sent as des (verified in pre-production).
   - fetchAll=true walks all pages up to maxPages; if the cap is reached it returns truncated=true and the list is INCOMPLETE.
@@ -291,7 +303,7 @@ How many tools the server registers in each configuration (computed with the rea
 - **Notes and restrictions:**
   - Side effect: if another system shares the subscription and consumes that queue, in production it will no longer see the document.
   - An unsigned document answers 409/50008.
-  - Alternative that does not change the Downloaded flag (the call is recorded in the document log): vidsigner_get_document.
+  - vidsigner_get_document (GET /documents/{id}) has the same side effect on a signed document (verified in pre-production), so it is not an alternative; the evidence report (vidsigner_get_document_report) does not mark it.
 - **Example:** `{"docGuid":"0b6f1d0e-1c2a-4c55-9d8e-3a1f5b7c9e21"}`
 
 #### `vidsigner_delete_signed_document`
@@ -303,7 +315,7 @@ How many tools the server registers in each configuration (computed with the rea
 - **Main parameters:**
   - `docGuid` (string, required): Document GUID (DocGUI), as returned when the document was created.
 - **Notes and restrictions:**
-  - Between the logical and the physical deletion it can still be downloaded.
+  - Between the logical and the physical deletion it can still be downloaded. Verified in pre-production (17/11/2026): right after the call get_document_info still returns the document with DocStatus Signed, and vidsigner_delete_document refuses it (409/50009).
   - An unsigned document answers 409/50008.
 - **Example:** `{"docGuid":"0b6f1d0e-1c2a-4c55-9d8e-3a1f5b7c9e21"}`
 
@@ -321,7 +333,9 @@ How many tools the server registers in each configuration (computed with the rea
 - **Notes and restrictions:**
   - Only works if the signer was created with SkipSignatureEmail=true (otherwise 409/16601) and the subscription has the AllowSkipEmail permission (otherwise 409/40111).
   - Every call records the evidence SIGNATUREURL_RETRIEVED in the report of the document (not documented by the vendor): do not call it exploratively or repeatedly.
-  - The URL is stable per signer (it is the same one the resend email carries) and it cannot be rotated: it is only invalidated by expiring or deleting the document.
+  - The URL is stable per signer (it is the same one the resend email carries) and it cannot be rotated.
+  - ORDERED signing (OrderedGroups=true): the link of a signer who is not next in line answers 409 with code 0 "Is no next signature" until the signer before them has signed (verified in pre-production: the first signer gets the URL, the second one the 409). Ask again once the previous signer has signed; the error carries a hint.
+  - EXPIRED document: the API still returns a URL for it (verified in pre-production after vidsigner_expire_document; the document stays Unsigned, see that tool). Whether the link still lets someone sign was NOT verified because links are never opened here: do not hand out the link of an expired document.
   - With emailandsms the signer must also pass the OTP: the link is the first factor, not the only one, unless the signer was created with AllowEmptyPhoneNumber.
   - The link is a bearer credential: anyone who opens it can start the signing. Hand it only to the signer.
   - returnUrl is validated against the notification destination policy.
@@ -340,6 +354,7 @@ How many tools the server registers in each configuration (computed with the rea
   - `EmailNotification` (object, optional): Custom email subject/body.
 - **Notes and restrictions:**
   - Sends a real message to the signer.
+  - The evidence recorded on the document is EMAIL_RESENT for the email channel and REMINDER_SENT for the SMS channel (verified in pre-production).
   - Only for pending remote signatures. It also works on documents created with SkipSignatureEmail=true (verified in pre-production: 200 without body, evidence EMAIL_RESENT).
   - It is not retried automatically.
   - The destination and texts go through the recipient policy.
@@ -387,6 +402,7 @@ How many tools the server registers in each configuration (computed with the rea
 - **Notes and restrictions:**
   - Only in the OpenAPI.
   - Returns paths, never base64.
+  - BIO (tablet) signatures only: on a REMOTE signature, even one already signed through VIDremote, the API answers 409/50008 "is not yet signed" (verified in pre-production, 17/11/2026).
 
 #### `vidsigner_get_signature_evidence`
 
@@ -398,6 +414,7 @@ How many tools the server registers in each configuration (computed with the rea
   - `signerGuid` (string, required): Signer GUID (SignerGUID/SignerGUI) of one signature of a document.
 - **Notes and restrictions:**
   - Only in the OpenAPI.
+  - BIO (tablet) signatures only: on a REMOTE signature, even one already signed through VIDremote, the API answers 404/13500 "Signer not found" (verified in pre-production, 17/11/2026). For remote signatures use vidsigner_get_document_info (Evidences) and vidsigner_get_document_report.
 
 #### `vidsigner_get_vidmobile_signature_request`
 
@@ -409,6 +426,7 @@ How many tools the server registers in each configuration (computed with the rea
   - `requestId` (string, required): Signature request id.
 - **Notes and restrictions:**
   - Only in the OpenAPI; the manual does not document it.
+  - It does NOT accept the subscription token this MCP uses: the API answers 401 "Invalid Authentication Token Role. Accepted Roles: vidmobilecert\swisscom. Presented Role: subscription" (verified in pre-production). It needs the token of a VIDmobile user (role vidmobilecert), so with the credentials of this MCP it always fails.
 
 ### Batches
 
@@ -428,7 +446,8 @@ How many tools the server registers in each configuration (computed with the rea
   - `NotificationConfig` (object, optional): Which webhook notifications are sent to NotificationURL and how they are authenticated.
 - **Notes and restrictions:**
   - Requires JWT.
-  - NotificationEmailMessage: required for emailandsms signers unless SkipSignatureEmail=true, and must be omitted/null when SkipSignatureEmail=true (API errors 12541/12544). Verified for POST /documents only; assumed, not verified, for the batch endpoints.
+  - NotificationEmailMessage: required for emailandsms signers unless SkipSignatureEmail=true, and must be omitted/null when SkipSignatureEmail=true (API errors 12541/12544). Verified in pre-production for POST /documentbatch as well as for POST /documents (17/11/2026).
+  - NotificationURL: every document of the batch must carry the same NotificationURL (or none); otherwise adding a document fails with 400/12205. See vidsigner_add_document_to_batch.
   - The emails are sent when the batch is closed (vidsigner_close_batch), not when it is created.
   - Body fields are the VIDsigner API ones (PascalCase).
 - **Example:** `{"IssuerName":"Acme","SignersGroups":[{"Signers":[{"SignatureType":"emailandsms","SignerName":"Jane Doe","Email":"ana@example.test","PhoneNumber":"+34600111222","Language":"es"}]}]}`
@@ -455,7 +474,9 @@ How many tools the server registers in each configuration (computed with the rea
   - … and 2 more (see the tool schema).
 - **Notes and restrictions:**
   - SignaturesGroups[].Signatures[] follows the same order as the signers of the batch.
-  - The NotificationEmailMessage / SkipSignatureEmail rule (12541/12544) applies to the signers of the batch (see vidsigner_create_batch); verified for POST /documents only.
+  - The NotificationEmailMessage / SkipSignatureEmail rule (12541/12544) applies to the signers of the batch (see vidsigner_create_batch); verified in pre-production for POST /documentbatch too.
+  - NotificationURL must be IDENTICAL in every document of the batch (or absent in all of them): a document whose NotificationURL differs from the others is rejected with 400/12205 "Notification URL must match the list of documents" (verified in pre-production).
+  - Adding to a batch that is already closed answers 409/52001; to a batch that does not exist (or was deleted), 404/52000.
   - Accepts filePath or contentBase64.
 - **Example:** `{"batchGuid":"0b6f1d0e-1c2a-4c55-9d8e-3a1f5b7c9e21","filePath":"/Users/me/vidsigner-mcp/in/contract.pdf","SignaturesGroups":[{"Signatures":[{"Visible":{"Page":1,"PosX":100,"PosY":200,"SizeX":60,"SizeY":20}}]}]}`
 
@@ -468,8 +489,10 @@ How many tools the server registers in each configuration (computed with the rea
 - **Main parameters:**
   - `batchGuid` (string, required): Batch GUID (DocBatchGUI) returned when the batch was created.
 - **Notes and restrictions:**
-  - Sends real emails and SMS.
+  - Sends real emails and SMS (none if every signer has SkipSignatureEmail=true).
   - It is not retried automatically, to avoid duplicates.
+  - This is the only operation on PUT /documentbatch/{batchGuid}/status: there is no separate "set batch status" tool.
+  - Closing a batch with no documents answers 409/52063; a batch already closed, 409/52001.
 - **Example:** `{"batchGuid":"0b6f1d0e-1c2a-4c55-9d8e-3a1f5b7c9e21"}`
 
 #### `vidsigner_get_batch_info`
@@ -477,10 +500,13 @@ How many tools the server registers in each configuration (computed with the rea
 - **Operation:** `GET /documentbatchinfo/{batchGuid}`
 - **Risk:** read
 - **Flags:** none (default in pre: yes; in pro: yes)
-- **Description:** Returns the status of a batch (Pending or Completed) and the GUID and status of each document.
+- **Description:** Returns the status of a CLOSED batch (Pending or Completed) and the GUID and status of each document. For an open, empty or unknown batch it returns { listed: false } instead of an error.
 - **Main parameters:**
   - `batchGuid` (string, required): Batch GUID (DocBatchGUI) returned when the batch was created.
 - **Notes and restrictions:**
+  - It only lists a batch once it has been closed (vidsigner_close_batch). While the batch is open the API answers 404/52002 even if it already holds documents (verified in pre-production, 17/11/2026), so you cannot check an open batch with this tool.
+  - 404/52002 ("Documents on Batch {0} not found") is the same answer for a batch that does not exist, one that has no documents and one that is still open: the API gives no way to tell them apart. The tool returns { listed: false, code: 52002, ... } instead of an error so the answer is explicit.
+  - The listing survives vidsigner_delete_batch for a closed batch: its documents are independent of the batch record.
   - The batch id is always under Guid and each document id under Docs[].Guid, even if the server spells them BatchGUI or DocGUI as in the manual.
 - **Example:** `{"batchGuid":"0b6f1d0e-1c2a-4c55-9d8e-3a1f5b7c9e21"}`
 
@@ -489,12 +515,16 @@ How many tools the server registers in each configuration (computed with the rea
 - **Operation:** `DELETE /documentbatch/{batchGuid}`
 - **Risk:** destructive
 - **Flags:** `VIDSIGNER_ALLOW_WRITE=true` + `VIDSIGNER_ALLOW_DESTRUCTIVE=true` (default in pre: no; in pro: no)
-- **Description:** Deletes a batch. The endpoint appears only in the error annex (Annex III) of the manual: it may not exist in your version.
+- **Description:** Deletes the batch record. On an OPEN batch it also removes the documents already added to it; on a CLOSED batch its documents stay and must be deleted one by one with vidsigner_delete_document. A second delete, or an unknown batch, answers 500.
 - **Main parameters:**
   - `batchGuid` (string, required): Batch GUID (DocBatchGUI) returned when the batch was created.
 - **Notes and restrictions:**
+  - Verified in pre-production on 17/11/2026: after the delete the batch no longer exists for the API (adding a document or closing it answers 404/52000 "Batch not found").
+  - OPEN batch: the documents added to it are deleted too (they answer 404 afterwards).
+  - CLOSED batch: the batch record is gone but its documents keep existing as ordinary documents, and vidsigner_get_batch_info still lists them. Delete each one with vidsigner_delete_document.
+  - A batch that does not exist or was already deleted does NOT answer 404: the API answers 500 "Value cannot be null. Parameter name: entity" (documented in Annex III of the manual as an unhandled ArgumentNullException). The tool keeps the HTTP error and explains it.
+  - The operation does not appear in the OpenAPI or in the operations list of the manual, only in Annex III.
   - It is irreversible.
-  - A 404 or 405 may mean the endpoint does not exist; verify with vidsigner_get_batch_info.
 - **Example:** `{"batchGuid":"0b6f1d0e-1c2a-4c55-9d8e-3a1f5b7c9e21"}`
 
 ### E-Delivery
@@ -623,6 +653,7 @@ How many tools the server registers in each configuration (computed with the rea
   - `enrollmentCodeId` (string, required): Enrollment code identifier.
 - **Notes and restrictions:**
   - Only in the OpenAPI.
+  - Passing the enrollment code TEXT (e.g. "enrollxxxx") answered 403/20301 "has no access to EnrollmentCode" in pre-production: the id probably has to be the GUID of the enrollment code, which only the management API (partner credentials) returns. Not verified with a GUID.
 
 ### Search
 
@@ -633,10 +664,11 @@ How many tools the server registers in each configuration (computed with the rea
 - **Flags:** none (default in pre: yes; in pro: yes)
 - **Description:** Searches documents by AdditionalData and returns their DocGUIs. It is read-only even though it uses POST.
 - **Main parameters:**
-  - `additionaldata` (string, optional): Value of the AdditionalData field sent when the document was created (exact or partial match not verified).
-  - `elementtype` (string, optional): Type of element to search, e.g.
+  - `additionaldata` (string, required): Value of the AdditionalData field sent when the document was created.
+  - `elementtype` (`document`, required): Type of element to search.
 - **Notes and restrictions:**
-  - elementtype alone is rejected with 400/10608: always send additionaldata (optionally with elementtype).
+  - Both additionaldata and elementtype are mandatory: either one alone is rejected by the API with 400/10608. The only elementtype value is "document": "documents", "edelivery" and "batch" answer 400/10604 "Not allowed value for search term ElementType" (verified in pre-production).
+  - The match on additionaldata is EXACT and case-sensitive (verified in pre-production): a prefix, a substring or a different case returns an empty list. To search by part of the value or ignoring the case use vidsigner_list_documents with searchText.
   - An empty result is returned as an empty list.
 - **Example:** `{"additionaldata":"ORDER-2026-0001","elementtype":"document"}`
 
@@ -659,7 +691,8 @@ How many tools the server registers in each configuration (computed with the rea
   - `SignaturePolicy` (string, optional): Facturae when the format is EPES; null otherwise (the manual spells FacturaeOrNull).
   - `outputFileName` (string, optional): Optional base file name for the downloaded file.
 - **Notes and restrictions:**
-  - The subscription needs the STAMP_XML channel.
+  - The subscription needs the STAMP_XML channel (otherwise 409/51121 "Unsupported signature type: STAMP_XML"; the demo subscription of pre-production does not have it).
+  - The API recognizes the Facturae version by the XML namespace: the Facturae 3.2.2 one, ending in Facturaev3_2_2.xml (no underscore between "Factura" and "e"), is recognized (verified in pre-production); a document it cannot classify answers 400/50403 "Xml document type not supported. Allowed: 3.2,3.2.1,3.2.2".
   - The certificate PIN travels in the request: provide it only when needed.
   - Accepts filePath or contentBase64.
 - **Example:** `{"filePath":"/Users/me/vidsigner-mcp/in/invoice.xml","CertificateGUI":"0b6f1d0e-1c2a-4c55-9d8e-3a1f5b7c9e21","Pin":"1234","XAdESSignatureFormat":"EPES","SignaturePolicy":"Facturae"}`
@@ -817,12 +850,15 @@ How many tools the server registers in each configuration (computed with the rea
 
 #### `vidsigner_mgmt_get_subscription`
 
-- **Operation:** `GET /subscriptions/{id}`
+- **Operation:** `GET /subscription/{guid}`
 - **Risk:** read
 - **Flags:** `VIDSIGNER_ENABLE_MGMT=true` (default in pre: no (management must be enabled); in pro: no (management must be enabled))
-- **Description:** Returns a subscription with the limits of its channels. The password is never shown.
+- **Description:** Returns a subscription with the limits of its channels. The password is never shown. The route is the singular /subscription/{guid}, not the manual /subscriptions/{id}.
 - **Main parameters:**
-  - `subscriptionId` (string, required): Subscription GUID (or id).
+  - `subscriptionId` (string, required): Subscription GUID (not the subscription name).
+- **Notes and restrictions:**
+  - The route is the SINGULAR /subscription/{guid}. The manual writes /subscriptions/{id}, but in pre-production that route does not exist (404 "No HTTP resource was found", with the GUID and with the name) while the singular one answers (verified on 17/11/2026 with subscription credentials).
+  - Only the subscription GUID works, not its name, and only the one of your own credentials: another GUID answers 403 "Subscription from header and parameter not equal". Partner credentials have not been tried.
 
 #### `vidsigner_mgmt_update_subscription`
 
@@ -967,6 +1003,7 @@ How many tools the server registers in each configuration (computed with the rea
   - `legalId` (string, required): Legal id (NIF/NIE) of the VIDmobile user: the identifier used in the URL.
 - **Notes and restrictions:**
   - The manual lists it without a detail section: the response format is undocumented.
+  - Not available in pre-production: the route answers the IIS 404 page ("The resource you are looking for has been removed...") for every user, including with variants (trailing slash, singular, GUID in place of legal id). Listed in the manual, UNCONFIRMED in this environment.
   - It requires VIDSIGNER_ALLOW_CREDENTIAL_READS, which is separate from VIDSIGNER_ALLOW_SIGNING_LINKS.
 
 #### `vidsigner_mgmt_get_vidmobile_user_personal_data`
@@ -979,6 +1016,7 @@ How many tools the server registers in each configuration (computed with the rea
   - `legalId` (string, required): Legal id (NIF/NIE) of the VIDmobile user: the identifier used in the URL.
 - **Notes and restrictions:**
   - Highly sensitive personal data.
+  - Not available in pre-production: the route answers the IIS 404 page ("The resource you are looking for has been removed...") for every user, including with variants (trailing slash, singular, GUID in place of legal id). Listed in the manual, UNCONFIRMED in this environment.
 
 #### `vidsigner_mgmt_create_vidmobile_user`
 
@@ -1001,8 +1039,9 @@ How many tools the server registers in each configuration (computed with the rea
   - 409 if the userid or the legalid already exist.
   - The email is mandatory and validated (empty and "null" are rejected).
   - The password goes through the arguments of the call (it ends up in the model context).
-  - The signature image accepts filePath or contentBase64, max 100 KB.
-- **Example:** `{"userid":"jane@example.test","username":"Jane Doe","legalid":"12345678Z","email":"jane@example.test","password":"change-me-1234","skipEnrollEmail":true}`
+  - The API REQUIRES a handwritten signature image: send filePath or contentBase64 (exactly one, max 100 KB). Without it the call is refused before reaching the API.
+  - The API enforces a password policy (verified in pre-production): at least 8 characters, an uppercase letter, a number and one of the special characters @ # $ (! - _ . are NOT accepted as the special one); otherwise 400 "password must be contains at least an uppercase / a number / an special char like @#$".
+- **Example:** `{"userid":"jane@example.test","username":"Jane Doe","legalid":"12345678Z","email":"jane@example.test","password":"Change-me#1234","skipEnrollEmail":true,"filePath":"/Users/me/vidsigner-mcp/in/signature.png"}`
 
 #### `vidsigner_mgmt_delete_vidmobile_user`
 
@@ -1091,6 +1130,7 @@ How many tools the server registers in each configuration (computed with the rea
   - `state` (string, required): Undocumented; probably active / inactive.
 - **Notes and restrictions:**
   - The operation appears in the manual table with no detail: the valid values of state are undocumented (probably active and inactive).
+  - Not available in pre-production: PUT /vidmobileusers/{legalid}/state/{state} answers the IIS 404 page for active, inactive, Active, 1, 0, true and false, with and without trailing slash. UNCONFIRMED in this environment: it may not be deployed.
 - **Example:** `{"legalId":"12345678Z","state":"inactive"}`
 
 ### Certificates
@@ -1100,9 +1140,11 @@ How many tools the server registers in each configuration (computed with the rea
 - **Operation:** `GET /vidmobileusers/{legalid}/certs`
 - **Risk:** read
 - **Flags:** `VIDSIGNER_ENABLE_MGMT=true` (default in pre: no (management must be enabled); in pro: no (management must be enabled))
-- **Description:** Lists the certificates of a VIDmobile user: alias, type (Software, KeyVault, FirmaRemota), DN and expiration.
+- **Description:** Lists the certificates of a VIDmobile user: alias, type (Software, KeyVault, FirmaRemota), DN and expiration. A user without certificates returns an empty list.
 - **Main parameters:**
   - `legalId` (string, required): Legal id (NIF/NIE) of the VIDmobile user: the identifier used in the URL.
+- **Notes and restrictions:**
+  - A user that exists but has no certificates answers 404 "Element not found.No certs for vidmobile user ..."; the client turns exactly that case into an empty list (verified in pre-production). The 404 of a user that does not exist ("No vidmobile user with legalid ...") is still an error.
 
 #### `vidsigner_mgmt_add_vidmobile_user_certificate`
 
@@ -1116,12 +1158,14 @@ How many tools the server registers in each configuration (computed with the rea
   - `pin` (string, required): PIN of the private key.
   - `filePath` (string, optional): Absolute path of a local file to upload.
   - `contentBase64` (string, optional): File content encoded in Base64.
-  - `certtype` (`Software` \| `KeyVault`, optional): Default Software.
+  - `certtype` (`KeyVault`, optional): Certificate type.
   - `dynamicpin` (boolean, optional): KeyVault only: send an OTP to the user mobile.
 - **Notes and restrictions:**
   - The PIN travels in the arguments of the call.
   - Accepts filePath or contentBase64.
-- **Example:** `{"legalId":"12345678Z","filePath":"/Users/me/vidsigner-mcp/in/certificate.p12","certalias":"Jane Doe certificate","pin":"1234","certtype":"Software"}`
+  - certtype "Software" is deprecated: the API rejects it with 400 "Certificate type 'Software' is deprecated. Use KeyVault" (verified in pre-production). Only KeyVault is offered; if you omit it nothing is sent and the API decides.
+  - The certificate must come from a chain the API recognizes: a self-signed .pfx is rejected with 400 "Certificate is not from a recognized chain" (and a file that is not a PKCS#12, with 400 "Bad certificate"). A successful upload has not been verified in pre-production for lack of such a certificate.
+- **Example:** `{"legalId":"12345678Z","filePath":"/Users/me/vidsigner-mcp/in/certificate.p12","certalias":"Jane Doe certificate","pin":"1234","certtype":"KeyVault"}`
 
 #### `vidsigner_mgmt_delete_vidmobile_user_certificate`
 
@@ -1144,10 +1188,12 @@ How many tools the server registers in each configuration (computed with the rea
 - **Description:** Chooses the certificate types a VIDmobile user may use.
 - **Main parameters:**
   - `legalId` (string, required): Legal id (NIF/NIE) of the VIDmobile user: the identifier used in the URL.
-  - `Software` (boolean, required): Allow software certificates (.p12 uploaded to VIDsigner).
   - `KeyVault` (boolean, required): Allow key-vault certificates.
   - `FirmaRemota` (boolean, required): Allow remote-signature (qualified remote) certificates.
-- **Example:** `{"legalId":"12345678Z","Software":true,"KeyVault":false,"FirmaRemota":false}`
+  - `Software` (boolean, optional): DEPRECATED, optional: true is rejected by the API (400 "Software certtype is deprecated.
+- **Notes and restrictions:**
+  - Software is DEPRECATED: Software=true is rejected with 400 "Software certtype is deprecated. Use KeyVault instead" (verified in pre-production). It is optional: send KeyVault and/or FirmaRemota.
+- **Example:** `{"legalId":"12345678Z","KeyVault":true,"FirmaRemota":false}`
 
 #### `vidsigner_mgmt_list_stamp_certificates`
 
@@ -1188,13 +1234,14 @@ How many tools the server registers in each configuration (computed with the rea
 - **Description:** Counts the signatures made in a date range per VIDmobile user, VIDstamper user or device. It is read-only even though it uses POST.
 - **Main parameters:**
   - `subscriptionGuid` (string, required): Subscription GUID.
-  - `From` (string, required): Start date, yyyy/MM/dd.
-  - `To` (string, required): End date, yyyy/MM/dd.
+  - `From` (string, required): Start date, dd/MM/yyyy (the format the API accepts; yyyy/MM/dd and yyyy-MM-dd are converted).
+  - `To` (string, required): End date, dd/MM/yyyy (the format the API accepts; yyyy/MM/dd and yyyy-MM-dd are converted).
   - `Type` (`vidmobileuser` \| `vidstamperuser` \| `device`, optional): Omit to search all types.
   - `Id` (string, optional): ViDMobileUserGUID, ViDStamperUserGUID or DeviceName, depending on Type.
 - **Notes and restrictions:**
-  - Dates use the yyyy/MM/dd format.
-- **Example:** `{"subscriptionGuid":"0b6f1d0e-1c2a-4c55-9d8e-3a1f5b7c9e21","From":"2026/01/01","To":"2026/01/31","Type":"vidmobileuser"}`
+  - Dates: the API of pre-production only accepts dd/MM/yyyy (verified on 17/11/2026: "01/11/2026" answers 200, while the manual example format "2017/01/01" and ISO "2026-11-01" answer 400 "Date From is not correct"). The tool also accepts yyyy/MM/dd and yyyy-MM-dd and converts them to dd/MM/yyyy before sending.
+  - An empty range returns an empty list. subscriptionGuid must be the GUID of your own subscription (403 otherwise, and the name is not accepted).
+- **Example:** `{"subscriptionGuid":"0b6f1d0e-1c2a-4c55-9d8e-3a1f5b7c9e21","From":"01/01/2026","To":"31/01/2026","Type":"vidmobileuser"}`
 
 ### Devices (management)
 
@@ -1237,7 +1284,7 @@ How many tools the server registers in each configuration (computed with the rea
 
 #### `vidsigner_mgmt_create_tsystems_doctype`
 
-- **Operation:** `POST /subscription/{guid}/tsystemsdoctypes`
+- **Operation:** `POST /subscription/{guid}/tsystemsdoctype`
 - **Risk:** write
 - **Flags:** `VIDSIGNER_ENABLE_MGMT=true` + `VIDSIGNER_ALLOW_WRITE=true` (default in pre: no (management must be enabled); in pro: no (management must be enabled))
 - **Description:** Adds a T-Systems document type to a subscription.
@@ -1247,6 +1294,7 @@ How many tools the server registers in each configuration (computed with the rea
   - `Code` (string, required): Document type DBOID as defined by T-Systems.
 - **Notes and restrictions:**
   - Only for subscriptions configured with T-Systems Registra (otherwise 409).
+  - The route is the SINGULAR /tsystemsdoctype, not the plural of the manual: in pre-production POST on /tsystemsdoctypes answers 405 and on /tsystemsdoctype reaches the T-Systems check (409). Only the route is verified: the demo subscription has no T-Systems, so a successful creation has not been seen.
 - **Example:** `{"subscriptionGuid":"0b6f1d0e-1c2a-4c55-9d8e-3a1f5b7c9e21","DocumentType":"Contract","Code":"DBOID-1234"}`
 
 #### `vidsigner_mgmt_delete_tsystems_doctype`
@@ -1300,17 +1348,21 @@ How many tools the server registers in each configuration (computed with the rea
 
 ## Alternative spellings (OpenAPI versus manual)
 
-The tools accept both spellings, normalize them to the canonical one and, where there is a real doubt, send both. The decision lives in `src/tools/aliases.ts`. Only the signer `Email` / `eMail` of `POST /documents` is **verified** (pre-production, 17/11/2026: the server is case-insensitive and, if the two values differ, the last key wins, which is why different values are rejected); the rest is **pending verification in pre-production** (writes require a JWT).
+The tools accept both spellings, normalize them to the canonical one and, where there is a real doubt, send both with the same value. The decision lives in `src/tools/aliases.ts`. Statuses (pre-production, 17/11/2026):
+
+- **verified**: the signer `Email` / `eMail` of `POST /documents`. The server is case-insensitive and, if the two values differ, **the last key of the JSON wins**, which is why the tools reject different values and send only `Email`.
+- **accepted**: the API accepts both spellings (a real `POST` answered 200), but **which one it reads when they differ is not determined**, so both are still sent with the same value. This covers the `Email` / `eMail` of the batch signer, `App` / `APP` (`Appearance`), `CertificateGUID` / `CertificateGUI` (the API reads at least one: an unknown GUID answers 400/90000) and `whatsapp` / `WhatsApp` (`OTPChannel`; the delivery itself could not be observed).
+- **pending**: not exercised against the API (the recipients' `Email` / `eMail`, `RejectionOptions` and the response-side spellings).
 
 | Schema                      | Field                                 | Sent           | Status   |
 | --------------------------- | ------------------------------------- | -------------- | -------- |
 | `Signer.SignerV2DTO`        | `Email` / `eMail`                     | canonical only | verified |
-| `Signer.SignerV2DTO`        | `OTPChannel`: `whatsapp` / `WhatsApp` | canonical only | pending  |
-| `Signer.BatchSignerDTO`     | `Email` / `eMail`                     | both           | pending  |
-| `Signer.BatchSignerDTO`     | `OTPChannel`: `whatsapp` / `WhatsApp` | canonical only | pending  |
+| `Signer.SignerV2DTO`        | `OTPChannel`: `whatsapp` / `WhatsApp` | canonical only | accepted |
+| `Signer.BatchSignerDTO`     | `Email` / `eMail`                     | both           | accepted |
+| `Signer.BatchSignerDTO`     | `OTPChannel`: `whatsapp` / `WhatsApp` | canonical only | accepted |
 | `DocumentRecipientDTO`      | `Email` / `eMail`                     | both           | pending  |
-| `DocAppearanceDTO`          | `App` / `APP`                         | both           | pending  |
-| `CentralizedCertificateDTO` | `CertificateGUID` / `CertificateGUI`  | both           | pending  |
+| `DocAppearanceDTO`          | `App` / `APP`                         | both           | accepted |
+| `CentralizedCertificateDTO` | `CertificateGUID` / `CertificateGUI`  | both           | accepted |
 | `RejectionOptionDTO`        | `Id` / `id`                           | canonical only | pending  |
 | `RejectionOptionDTO`        | `Text` / `text`                       | canonical only | pending  |
 
