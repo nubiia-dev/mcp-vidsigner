@@ -98,6 +98,8 @@ export function sample(s: JsonSchema, name = ''): unknown {
         return 'a@example.test';
       }
       if (/^(recipient)?phone(number)?$/i.test(name)) return '+34600111222';
+      // Passwords of VIDmobile users: the tool enforces the policy of the API (8+, A-Z, 0-9, @ # $).
+      if (/^password$/i.test(name)) return 'Sample1234#';
       if (s.pattern?.includes('\\d{4}')) return '2026/01/01';
       if (s.minLength && s.minLength > 1) return 'x'.repeat(s.minLength);
       return 'x';

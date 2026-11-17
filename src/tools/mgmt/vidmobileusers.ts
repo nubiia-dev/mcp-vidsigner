@@ -8,6 +8,19 @@ const legalId = id('Legal id (NIF/NIE) of the VIDmobile user: the identifier use
 const subscriptionGuid = id('Subscription GUID.');
 const BASIC = 'Uses the subscription credentials (Basic), no OAuth client needed.';
 
+/**
+ * Password policy of `POST /vidmobileusers`, measured in pre-production (17/11/2026): 8 or more
+ * characters, an uppercase letter, a number and one of `@ # $` (`! - _ .` do not count). Checking it
+ * here avoids a 400 round trip and keeps a rejected password out of the API.
+ */
+export const newUserPassword = z
+  .string()
+  .min(8, 'must have 8 or more characters')
+  .max(100, 'must have at most 100 characters')
+  .regex(/[A-Z]/, 'must contain an uppercase letter')
+  .regex(/\d/, 'must contain a number')
+  .regex(/[@#$]/, 'must contain one of @ # $ (! - _ . are not accepted as the special character)');
+
 const listBySubscription = defineTool({
   name: 'vidsigner_mgmt_list_subscription_vidmobile_users',
   title: 'List VIDmobile users of a subscription (partner)',
@@ -143,13 +156,9 @@ const createUser = defineTool({
     username: z.string().describe('Display name of the user.'),
     legalid: z.string().describe('Legal id (NIF/NIE) of the user; unique in the subscription.'),
     email: z.string().describe('Email of the user (VIDSIGNER_ALLOWED_EMAIL_DOMAINS restricts it).'),
-    password: z
-      .string()
-      .min(4)
-      .max(100)
-      .describe(
-        'Password of the user, 4-100 characters (a secret). The API requires 8+ characters, an uppercase letter, a number and one of @ # $: otherwise 400.',
-      ),
+    password: newUserPassword.describe(
+      'Password of the user (a secret), 8-100 characters with an uppercase letter, a number and one of @ # $ (! - _ . do not count as the special character). Validated here with the same policy the API enforces.',
+    ),
     skipEnrollEmail: z.boolean().describe('true to NOT send the enrollment email.'),
     PhoneNumber: z.string().optional().describe('E.164.'),
     Language: z

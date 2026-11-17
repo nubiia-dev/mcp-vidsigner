@@ -297,6 +297,25 @@ describe('MCP: management', () => {
     expect(user.text).not.toContain('SECRET-TOKEN');
   });
 
+  it('get_subscription never returns SubscriptionPass', async () => {
+    const m = api((u) =>
+      u.pathname.endsWith('/subscription/g1')
+        ? json(200, {
+            SubscriptionGUID: 'g1',
+            SubscriptionName: 'sub-name-1',
+            SubscriptionPass: 'SECRET-SUB-PASS-0002',
+            Active: true,
+          })
+        : json(404, {}),
+    );
+    const h = await startHarness({ env: MGMT_ENV, fetch: m.fetch });
+    const r = await h.call('vidsigner_mgmt_get_subscription', { subscriptionId: 'g1' });
+    expect(r.isError).toBe(false);
+    expect(r.text).not.toContain('SECRET-SUB-PASS');
+    expect(r.text).toContain('[hidden]');
+    expect(r.text).toContain('sub-name-1');
+  });
+
   it('create_subscription saves the password to a file and does not return it', async () => {
     const m = api(() =>
       json(200, [

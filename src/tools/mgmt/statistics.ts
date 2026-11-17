@@ -4,8 +4,11 @@ import { defineTool, type AnyToolDefinition } from '../define.js';
 import { id } from '../schemas.js';
 import { requireMgmt } from '../util.js';
 
-/** dd/MM/yyyy (what the API parses), yyyy/MM/dd (the manual) or yyyy-MM-dd (ISO). */
-const statsDate = z.string().regex(/^(\d{2}\/\d{2}\/\d{4}|\d{4}[/-]\d{2}[/-]\d{2})$/);
+/**
+ * dd/MM/yyyy (what the API parses), yyyy/MM/dd (the manual) or yyyy-MM-dd (ISO). One separator per
+ * date: `2026/11-01` is rejected instead of being guessed.
+ */
+const statsDate = z.string().regex(/^(\d{2}\/\d{2}\/\d{4}|\d{4}\/\d{2}\/\d{2}|\d{4}-\d{2}-\d{2})$/);
 
 /**
  * Converts a statistics date to the dd/MM/yyyy form the API parses (a `yyyy/MM/dd` value, which is the
@@ -29,6 +32,20 @@ export function toApiDate(value: string, field: string): string {
     });
   }
   return `${d}/${mo}/${y}`;
+}
+
+/**
+ * Rejects a range whose start is after its end. Both arguments are already in the dd/MM/yyyy form
+ * that {@link toApiDate} returns, so they are compared as yyyyMMdd numbers.
+ */
+export function assertDateRange(from: string, to: string): void {
+  const key = (v: string): string => v.split('/').reverse().join('');
+  if (key(from) > key(to)) {
+    throw new VidSignerError({
+      kind: 'validation',
+      message: `From (${from}) must not be after To (${to}).`,
+    });
+  }
 }
 
 const searchStatistics = defineTool({
@@ -75,6 +92,7 @@ const searchStatistics = defineTool({
   },
   handler: async ({ subscriptionGuid, From, To, ...rest }, ctx) => {
     const search = { ...rest, From: toApiDate(From, 'From'), To: toApiDate(To, 'To') };
+    assertDateRange(search.From, search.To);
     const items = await requireMgmt(ctx).searchStatistics(subscriptionGuid, search);
     return { count: items.length, items };
   },

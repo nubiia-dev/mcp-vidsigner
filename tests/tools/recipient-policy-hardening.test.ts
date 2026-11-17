@@ -104,7 +104,7 @@ describe('the required email does not accept empty or "null"', () => {
       username: 'User',
       legalid: '12345678Z',
       email: 'null',
-      password: 'secret1234',
+      password: 'Secret1234#',
       skipEnrollEmail: true,
     });
     expect(r.isError).toBe(true);

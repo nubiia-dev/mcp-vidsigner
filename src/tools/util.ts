@@ -21,7 +21,17 @@ export function omitKeys<T extends object>(value: T, keys: readonly string[]): P
 }
 
 /** Keys whose value is a secret and must never reach the model context. */
-const SECRET_KEYS = new Set(['password', 'subscriptionpass', 'token', 'pin', 'access_token']);
+const SECRET_KEYS = new Set([
+  'password',
+  'subscriptionpass',
+  'token',
+  'pin',
+  'access_token',
+  'clientsecret',
+  'partnerpass',
+  'secret',
+  'authorization',
+]);
 
 /**
  * Deep copy without the secret values (subscription and VIDmobile user passwords, tokens).
