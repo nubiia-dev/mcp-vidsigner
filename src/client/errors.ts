@@ -1,6 +1,7 @@
 import { VID_ERROR_CATALOG, type VidErrorCatalogEntry } from './errors/catalog.generated.js';
+import { OBSERVED_ERRORS, type ObservedErrorEntry } from './errors/observed.js';
 
-export { VID_ERROR_CATALOG, type VidErrorCatalogEntry };
+export { VID_ERROR_CATALOG, OBSERVED_ERRORS, type VidErrorCatalogEntry, type ObservedErrorEntry };
 
 /**
  * Error family, so callers can branch without parsing messages:
@@ -44,8 +45,11 @@ export class VidSignerError extends Error {
   readonly details: string | undefined;
   readonly timestamp: string | undefined;
   readonly operation: string | undefined;
-  /** Annex III catalog entry for `code`, if any (aids diagnosis). */
-  readonly catalog: VidErrorCatalogEntry | undefined;
+  /**
+   * Annex III catalog entry for `code`, if any (aids diagnosis). If the manual does not list the
+   * code, the entry observed in practice ({@link OBSERVED_ERRORS}, `source: 'observed'`).
+   */
+  readonly catalog: VidErrorCatalogEntry | ObservedErrorEntry | undefined;
 
   constructor(init: VidSignerErrorInit) {
     super(init.message, init.cause !== undefined ? { cause: init.cause } : undefined);
@@ -56,7 +60,10 @@ export class VidSignerError extends Error {
     this.details = init.details;
     this.timestamp = init.timestamp;
     this.operation = init.operation;
-    this.catalog = init.code !== undefined ? VID_ERROR_CATALOG[init.code] : undefined;
+    this.catalog =
+      init.code !== undefined
+        ? (VID_ERROR_CATALOG[init.code] ?? OBSERVED_ERRORS[init.code])
+        : undefined;
   }
 
   /** True if retrying makes sense (5xx, network or timeout). */
@@ -78,6 +85,7 @@ export class VidSignerError extends Error {
       details: this.details || undefined,
       operation: this.operation,
       catalogMessage: this.catalog?.message,
+      catalogSource: this.catalog && 'source' in this.catalog ? this.catalog.source : undefined,
       hint: hintFor(this),
     };
   }
@@ -90,6 +98,10 @@ export function hintFor(err: VidSignerError): string | undefined {
       return 'GET vidremoteurl only works if the signer was created with SkipSignatureEmail=true.';
     case 40111:
       return 'The subscription needs the AllowSkipEmail permission (ask Validated ID for it).';
+    case 12541:
+      return 'An emailandsms signer without SkipSignatureEmail needs NotificationEmailMessage (eMailSubject and eMailBody). Add it, or create the signer with SkipSignatureEmail=true to get the link with vidsigner_get_signature_url (needs AllowSkipEmail).';
+    case 12544:
+      return 'With SkipSignatureEmail=true the signer must not carry NotificationEmailMessage: remove it (or set SkipSignatureEmail=false to have VIDsigner send the email).';
     case 20206:
       return 'This operation requires a JWT (ClientID/ClientSecret); with Basic it answers 401.';
     case 12006:

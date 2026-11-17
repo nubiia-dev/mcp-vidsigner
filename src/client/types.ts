@@ -110,17 +110,35 @@ export type SignedDocument = S[`${P}SignedDocumentDTO`];
 export type DocumentReport = S[`${P}DocumentReportDTO`];
 export type DocumentTrace = S[`${P}DocumentTraceDTO`];
 type DocumentInfoSpec = S[`${P}DocumentInfo.DocumentInfoV30DTO`];
+type SignerGroupInfoSpec = S[`${P}DocumentInfo.SignerGroupInfo.SignerGroupInfoDTO`];
+type SignerInfoSpec = S[`${P}DocumentInfo.SignerInfo.SignerInfoV30DTO`];
+
+/**
+ * Signer of `GET /documentinfo/{guid}`. The API can answer `Evidences: null` (observed in
+ * pre-production, 17/11/2026) although the OpenAPI spec only allows an array: read it as
+ * `signer.Evidences ?? []`.
+ */
+export type DocumentInfoSigner = Omit<SignerInfoSpec, 'Evidences'> & {
+  Evidences?: NonNullable<SignerInfoSpec['Evidences']> | null;
+};
+
+/** Signer group of `GET /documentinfo/{guid}` (its signers may carry `Evidences: null`). */
+export type DocumentInfoSignerGroup = Omit<SignerGroupInfoSpec, 'Signers'> & {
+  Signers?: DocumentInfoSigner[];
+};
 
 /**
  * Detailed status of a document (`GET /documentinfo/{guid}`).
  *
  * The OpenAPI spec calls the list of groups `SignerGroups` and the manual (14.x) `SignersGroups`.
  * The client accepts either spelling in the response and ALWAYS returns both
- * (same reference), so it can be read with either spelling.
+ * (same reference), so it can be read with either spelling. `Evidences` of each signer can be
+ * `null` (see {@link DocumentInfoSigner}).
  */
-export type DocumentInfo = DocumentInfoSpec & {
+export type DocumentInfo = Omit<DocumentInfoSpec, 'SignerGroups'> & {
+  SignerGroups?: DocumentInfoSignerGroup[];
   /** Manual spelling of `SignerGroups`. */
-  SignersGroups?: DocumentInfoSpec['SignerGroups'];
+  SignersGroups?: DocumentInfoSignerGroup[];
 };
 export type DocumentListItem = S[`${P}DocumentListItemDTO`];
 export type DocumentGroup = S[`${P}Signer.SignerGroupDTO`];

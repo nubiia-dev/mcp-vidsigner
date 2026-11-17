@@ -24,9 +24,11 @@ export {
 export {
   VidSignerError,
   VID_ERROR_CATALOG,
+  OBSERVED_ERRORS,
   EMPTY_LIST_CODES,
   hintFor,
   type VidErrorCatalogEntry,
+  type ObservedErrorEntry,
   type VidSignerErrorKind,
 } from './errors.js';
 export { createLogger, silentLogger, Redactor, type LogLevel, type Logger } from './logger.js';

@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { VidSignerClient, VidSignerError } from '../../src/client/index.js';
+import {
+  OBSERVED_ERRORS,
+  VID_ERROR_CATALOG,
+  VidSignerClient,
+  VidSignerError,
+} from '../../src/client/index.js';
 import {
   apiError,
   json,
@@ -91,6 +96,69 @@ describe('error mapping', () => {
       .getSignatureRemoteUrl('s1')
       .catch((e: unknown) => e)) as VidSignerError;
     expect(err.toJSON()['hint']).toMatch(/AllowSkipEmail/);
+  });
+
+  it('400/12541 and 400/12544 (NotificationEmailMessage rule) carry an actionable hint', async () => {
+    const missing = (await make(
+      sequence(apiError(400, 12541, 'NotificationEmailMessage cannot be null for Signer: Jane'))
+        .fetch,
+    )
+      .getDocumentInfo('d')
+      .catch((e: unknown) => e)) as VidSignerError;
+    expect(missing.code).toBe(12541);
+    expect(missing.toJSON()['hint']).toMatch(/NotificationEmailMessage/);
+    expect(missing.toJSON()['hint']).toMatch(/SkipSignatureEmail=true/);
+
+    const surplus = (await make(
+      sequence(
+        apiError(
+          400,
+          12544,
+          'NotificationEmailMessage must be null if SkipSignatureEmail is true for Signer: Jane',
+        ),
+      ).fetch,
+    )
+      .getDocumentInfo('d')
+      .catch((e: unknown) => e)) as VidSignerError;
+    expect(surplus.toJSON()['hint']).toMatch(/must not carry NotificationEmailMessage/);
+  });
+
+  it('12541/12544 come from the observed catalog, flagged as such and apart from the manual one', async () => {
+    expect(VID_ERROR_CATALOG[12541]).toBeUndefined();
+    expect(VID_ERROR_CATALOG[12544]).toBeUndefined();
+    expect(OBSERVED_ERRORS[12541]?.source).toBe('observed');
+    const err = (await make(
+      sequence(apiError(400, 12544, 'NotificationEmailMessage must be null')).fetch,
+    )
+      .getDocumentInfo('d')
+      .catch((e: unknown) => e)) as VidSignerError;
+    expect(err.catalog).toBe(OBSERVED_ERRORS[12544]);
+    expect(err.toJSON()['catalogSource']).toBe('observed');
+    // A manual code is not flagged.
+    const manual = (await make(sequence(apiError(409, 16601, 'x')).fetch)
+      .getSignatureRemoteUrl('s')
+      .catch((e: unknown) => e)) as VidSignerError;
+    expect(manual.toJSON()['catalogSource']).toBeUndefined();
+  });
+
+  it('the observed codes never collide with the manual catalog (it is regenerated)', () => {
+    for (const code of Object.keys(OBSERVED_ERRORS)) {
+      expect(VID_ERROR_CATALOG[Number(code)], `code ${code}`).toBeUndefined();
+    }
+  });
+
+  it('documentinfo with Evidences: null is returned as is and the groups under both spellings', async () => {
+    const m = sequence(
+      json(200, {
+        DocGUI: 'd',
+        SignerGroups: [{ Signers: [{ SignerGUI: 's', Evidences: null }] }],
+      }),
+    );
+    const info = await make(m.fetch).getDocumentInfo('d');
+    const signer = info.SignerGroups?.[0]?.Signers?.[0];
+    expect(signer?.Evidences).toBeNull();
+    expect(signer?.Evidences ?? []).toEqual([]);
+    expect(info.SignersGroups).toBe(info.SignerGroups);
   });
 
   it('403 and 401 are of kind auth', async () => {

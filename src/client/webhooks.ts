@@ -15,7 +15,12 @@
  * - If the URL is set on the subscription and also on `POST /documents`, two notifications are sent.
  */
 
-/** IPs from which VIDsigner sends the notifications (manual, section 2). */
+/**
+ * IPs from which VIDsigner sends the notifications, as stated in the vendor documentation
+ * (REST manual, section 2). They are the vendor's and may change: confirm them with Validated ID
+ * before relying on them for network allow-listing, and do not treat the source IP as proof of
+ * authenticity.
+ */
 export const VIDSIGNER_NOTIFICATION_SOURCE_IPS = {
   pro: '40.118.19.23',
   pre: '52.166.168.111',
@@ -99,7 +104,7 @@ export interface WebhookSigner {
   OperationTime?: string | null;
   Approvers?: WebhookApprover[];
   ExtendedProperties?: WebhookExtendedProperties;
-  Evidences?: WebhookEvidence[];
+  Evidences?: WebhookEvidence[] | null;
   FormInfo?: WebhookFormInfo | null;
 }
 
