@@ -41,6 +41,7 @@ import type {
   VidMobileUserInput,
   VidMobileUserPersonalData,
 } from './mgmt-types.js';
+import { trimEnd } from '../util/trim.js';
 
 /** Root URLs of the management API (MGMT manual, section 1). They include `/api`. */
 export const VIDSIGNER_MGMT_BASE_URLS = {
@@ -113,7 +114,7 @@ export class VidSignerMgmtClient {
 
   constructor(opts: VidSignerMgmtClientOptions = {}) {
     const env = opts.environment ?? 'pre';
-    this.baseUrl = (opts.baseUrl ?? VIDSIGNER_MGMT_BASE_URLS[env]).replace(/\/+$/, '');
+    this.baseUrl = trimEnd(opts.baseUrl ?? VIDSIGNER_MGMT_BASE_URLS[env], '/');
 
     const redactor = new Redactor();
     redactor.addBasicPair(opts.clientId, opts.clientSecret);

@@ -52,6 +52,7 @@ import {
   type SignedDocumentRef,
   type VidMobileSignatureRequestCms,
 } from './types.js';
+import { trimEnd } from '../util/trim.js';
 
 /** Base URLs documented in the manual (section 1). They include `/api/v3.0`. */
 export const VIDSIGNER_BASE_URLS = {
@@ -152,7 +153,7 @@ export class VidSignerClient {
       });
     }
     this.environment = opts.environment ?? 'pre';
-    this.baseUrl = (opts.baseUrl ?? VIDSIGNER_BASE_URLS[this.environment]).replace(/\/+$/, '');
+    this.baseUrl = trimEnd(opts.baseUrl ?? VIDSIGNER_BASE_URLS[this.environment], '/');
     this.mode = opts.authMode ?? 'auto';
 
     const redactor = new Redactor();

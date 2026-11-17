@@ -118,11 +118,18 @@ export class FileService {
     // The extension is also checked against the real path (and only once inside the allowed
     // folders): a link `a.pdf` pointing to `key.p12` must not pass as a PDF.
     assertExtension(real, kind);
-    // Regular files only. A FIFO would block the read and a device (`/dev/zero`) would fill it
-    // endlessly: they are discarded BEFORE opening, and the open does not block (O_NONBLOCK) in
-    // case the path changes between the check and the `open`.
-    if (!(await stat(real)).isFile()) throw validation(NOT_REGULAR);
-    const handle = await open(real, constants.O_RDONLY | constants.O_NONBLOCK);
+    // Regular files only. There is no `stat` before the `open` (check-then-use race): the file is
+    // opened first and the type is checked on the DESCRIPTOR (`handle.stat()`), which no later
+    // path change can alter. `O_NONBLOCK` keeps a FIFO from blocking the open (and the FIFO or
+    // device is then rejected by the `isFile()` check); `O_NOFOLLOW` makes the open fail if the
+    // last component became a symlink after the `realpath` (ELOOP on Linux and macOS).
+    const handle = await open(
+      real,
+      constants.O_RDONLY | constants.O_NONBLOCK | (constants.O_NOFOLLOW ?? 0),
+    ).catch((err: NodeJS.ErrnoException) => {
+      if (err.code === 'ELOOP' || err.code === 'ENXIO') throw validation(UNREADABLE);
+      throw err;
+    });
     try {
       const info = await handle.stat();
       if (!info.isFile()) throw validation(NOT_REGULAR);

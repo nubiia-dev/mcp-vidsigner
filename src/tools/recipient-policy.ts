@@ -1,5 +1,6 @@
 import { VidSignerError } from '../client/errors.js';
 import type { RecipientRules } from '../config.js';
+import { trimEnd } from '../util/trim.js';
 
 /**
  * Optional allowlists for recipients and notification destinations.
@@ -76,7 +77,7 @@ export class RecipientPolicy {
       );
     }
     if (this.rules.emailDomains.length > 0) {
-      const domain = email.slice(email.lastIndexOf('@') + 1).replace(/\.+$/, '');
+      const domain = trimEnd(email.slice(email.lastIndexOf('@') + 1), '.');
       if (!domain || !matchesHost(domain, this.rules.emailDomains)) {
         throw denied(
           field,
@@ -161,7 +162,7 @@ export class RecipientPolicy {
     const hosts = [...this.rules.notificationHosts, ...this.rules.assetHosts];
     if (hosts.length === 0 || typeof value !== 'string') return;
     for (const match of value.matchAll(TEXT_URL_RE)) {
-      const raw = match[0].replace(/[.,;:!?]+$/, '');
+      const raw = trimEnd(match[0], '.,;:!?');
       let host: string;
       try {
         host = normalizeUrlHost(new URL(/^www\./i.test(raw) ? `https://${raw}` : raw));
@@ -318,7 +319,7 @@ const TEXT_URL_RE = /\b(?:https?:\/\/|www\.)[^\s<>"'`)\]]+/gi;
 
 /** Host in lowercase and without the trailing dot. */
 function normalizeUrlHost(url: URL): string {
-  return url.hostname.toLowerCase().replace(/\.+$/, '');
+  return trimEnd(url.hostname.toLowerCase(), '.');
 }
 
 /** The text "null" (with spaces and any capitalization): the manual uses it for "no email". */
@@ -351,7 +352,7 @@ const EMPTY_RULES: RecipientRules = {
 /** Exact match or subdomain wildcard (`*.example.com` / `.example.com`). */
 function matchesHost(host: string, patterns: readonly string[]): boolean {
   return patterns.some((raw) => {
-    const p = raw.trim().toLowerCase().replace(/\.+$/, '');
+    const p = trimEnd(raw.trim().toLowerCase(), '.');
     if (p.startsWith('*.') || p.startsWith('.')) {
       const suffix = p.replace(/^\*?/, '');
       return host.endsWith(suffix) && host.length > suffix.length;

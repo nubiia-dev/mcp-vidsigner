@@ -3,6 +3,7 @@ import { isAbsolute, join, parse, resolve, sep } from 'node:path';
 import { z } from 'zod';
 import { VIDSIGNER_BASE_URLS } from './client/vidsigner-client.js';
 import { VIDSIGNER_MGMT_BASE_URLS } from './client/mgmt-client.js';
+import { trimEnd } from './util/trim.js';
 
 /**
  * Environment boolean. `z.coerce.boolean()` treats "false" as true, so the text is parsed
@@ -308,7 +309,7 @@ function configWarnings(
 
 /** Normalizes a host: lowercase and without the trailing dot of FQDNs (`host.` -> `host`). */
 export function normalizeHost(host: string): string {
-  return host.trim().toLowerCase().replace(/\.+$/, '');
+  return trimEnd(host.trim().toLowerCase(), '.');
 }
 
 interface EndpointCheck {
@@ -325,7 +326,7 @@ interface EndpointCheck {
  * fragment, the exact host for the API and environment, and the exact API path.
  */
 function validateEndpoint(c: EndpointCheck): string {
-  const trimmed = c.raw.trim().replace(/\/+$/, '');
+  const trimmed = trimEnd(c.raw.trim(), '/');
   let url: URL;
   try {
     url = new URL(trimmed);
@@ -357,7 +358,7 @@ function validateEndpoint(c: EndpointCheck): string {
     );
   }
   const expectedPath = API_PATHS[c.api];
-  if (url.pathname.replace(/\/+$/, '') !== expectedPath) {
+  if (trimEnd(url.pathname, '/') !== expectedPath) {
     throw new ConfigError(
       `${c.name} must end exactly in ${expectedPath} (received "${url.pathname}").`,
     );
